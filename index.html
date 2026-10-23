@@ -1,0 +1,1191 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Mini PLM Demo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: sol gezinme paneli (sticky) + sağda sayfa başlığı ve içerik; dar ekranda panel üstte, sekmeler yatay kayar */
+:root{
+  --bg:#edf1f3; --surface:#ffffff; --sunk:#f4f7f8; --side:#e3e9ec; --ink:#15212a; --muted:#5a6873; --line:#d4dce1;
+  --accent:#1c6884; --accent-ink:#ffffff; --accent-soft:#dbecf2;
+  --work:#8f5b00; --work-bg:#fbefd6; --review:#3549ad; --review-bg:#e2e6fa;
+  --rel:#1f6e45; --rel-bg:#d9f0e2; --obs:#5f6872; --obs-bg:#e8ebee; --bad:#ab2222; --bad-bg:#fae1e1;
+  --f-head:"IBM Plex Sans Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1418; --surface:#161f26; --sunk:#121a20; --side:#121a20; --ink:#e3e9ed; --muted:#93a2ad; --line:#2a3741;
+  --accent:#5fb4d2; --accent-ink:#0b171d; --accent-soft:#1b3440;
+  --work:#e9b25a; --work-bg:#3a2c12; --review:#9fb0ff; --review-bg:#232b52;
+  --rel:#6fd19c; --rel-bg:#163a28; --obs:#a3acb5; --obs-bg:#262e35; --bad:#ff8f8f; --bad-bg:#4a1d1d;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1418; --surface:#161f26; --sunk:#121a20; --side:#121a20; --ink:#e3e9ed; --muted:#93a2ad; --line:#2a3741;
+  --accent:#5fb4d2; --accent-ink:#0b171d; --accent-soft:#1b3440;
+  --work:#e9b25a; --work-bg:#3a2c12; --review:#9fb0ff; --review-bg:#232b52;
+  --rel:#6fd19c; --rel-bg:#163a28; --obs:#a3acb5; --obs-bg:#262e35; --bad:#ff8f8f; --bad-bg:#4a1d1d;
+  color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 40px}
+h1,h2,h3{font-family:var(--f-head);font-weight:600;margin:0;text-wrap:balance;letter-spacing:.005em}
+h1{font-size:24px} h2{font-size:18px} h3{font-size:12.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+p{margin:0}
+.mono{font-family:var(--f-mono);font-size:12.5px}
+.muted{color:var(--muted)}
+.small{font-size:12.5px}
+button,select,input,textarea{font:inherit;color:inherit}
+select,input,textarea{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:6px 9px;min-width:0;max-width:100%}
+textarea{resize:vertical;min-height:70px;width:100%}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+/* app shell */
+.app{max-width:1400px;margin:0 auto;display:grid;grid-template-columns:236px minmax(0,1fr);gap:16px;align-items:start}
+.side{position:sticky;top:16px;background:var(--side);border:1px solid var(--line);border-radius:8px;padding:14px 12px;display:flex;flex-direction:column;gap:12px;max-height:calc(100vh - 32px);overflow:auto}
+.brand{display:flex;gap:10px;align-items:center}
+.logo{width:34px;height:34px;border-radius:6px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-family:var(--f-mono);font-weight:500;font-size:13px;flex:none}
+.brand b{font-family:var(--f-head);font-size:17px;display:block;line-height:1.1}
+.brand small{color:var(--muted);font-size:11.5px}
+.side input[type=search]{width:100%}
+nav#nav{display:flex;flex-direction:column;gap:10px}
+.ngrp{display:flex;flex-direction:column;gap:1px}
+.ngrp>span{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);padding:0 8px 3px}
+.nbtn{display:flex;justify-content:space-between;align-items:center;gap:8px;border:0;background:none;text-align:left;padding:6px 8px;border-radius:5px;cursor:pointer;color:var(--ink)}
+.nbtn:hover{background:var(--surface)}
+.nbtn[aria-current="page"]{background:var(--accent);color:var(--accent-ink);font-weight:500}
+.nbtn .b{font-family:var(--f-mono);font-size:11px;min-width:20px;text-align:center;padding:0 5px;border-radius:9px;background:var(--surface);color:var(--muted)}
+.nbtn .b.hot{background:var(--work-bg);color:var(--work)}
+.nbtn[aria-current="page"] .b{background:rgba(255,255,255,.2);color:inherit}
+.side-foot{border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:6px}
+.side-foot label{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
+.side-foot .role{font-size:12px;color:var(--muted)}
+.side-foot .acts{gap:6px}
+@media (max-width:860px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .side{position:static;max-height:none}
+  nav#nav{flex-direction:row;overflow-x:auto;gap:4px;padding-bottom:4px}
+  .ngrp{flex-direction:row;gap:4px}.ngrp>span{display:none}
+  .nbtn{white-space:nowrap;background:var(--surface)}
+}
+
+main{display:flex;flex-direction:column;gap:14px;min-width:0}
+.ph{display:flex;justify-content:space-between;align-items:flex-end;gap:10px 16px;flex-wrap:wrap}
+.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
+.cfgchip{display:inline-flex;gap:6px;align-items:center;font-size:12.5px;border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:3px 10px;cursor:pointer}
+.cfgchip b{font-weight:500}
+.lead{color:var(--muted);max-width:75ch}
+
+.btn{border:1px solid var(--line);background:var(--surface);padding:6px 12px;border-radius:4px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:500}
+.btn.off{opacity:.45;cursor:not-allowed}
+.btn.off:hover{border-color:var(--line)}
+.btn.sm{padding:3px 9px;font-size:12.5px}
+.acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:14px;align-items:start}
+.split.even{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.split.wide{grid-template-columns:minmax(0,1.7fr) minmax(0,1fr)}
+@media (max-width:1100px){.split,.split.even,.split.wide{grid-template-columns:minmax(0,1fr)}}
+.pane{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.pane-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:4px}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:left;font-weight:500;padding:7px 10px;background:var(--sunk);border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+tbody tr.click{cursor:pointer}
+tbody tr.click:hover{background:var(--sunk)}
+tbody tr.sel{background:var(--accent-soft)}
+tr.dim td{opacity:.5}
+td.num,th.num{text-align:right}
+td.c,th.c{text-align:center}
+a.lnk{color:var(--accent);cursor:pointer;text-decoration:none;font-family:var(--f-mono);font-size:12.5px}
+a.lnk:hover{text-decoration:underline}
+
+.chip{display:inline-block;font-size:11.5px;font-weight:500;padding:1px 8px;border-radius:10px;white-space:nowrap}
+.s-work{color:var(--work);background:var(--work-bg)}
+.s-review,.c-eval{color:var(--review);background:var(--review-bg)}
+.s-released,.c-approved,.r-pass,.k-ok{color:var(--rel);background:var(--rel-bg)}
+.s-obsolete,.c-draft,.r-open{color:var(--obs);background:var(--obs-bg)}
+.c-done{color:var(--accent);background:var(--accent-soft)}
+.c-rejected,.r-fail,.k-nok{color:var(--bad);background:var(--bad-bg)}
+.k-pending{color:var(--work);background:var(--work-bg)}
+.cond{font-family:var(--f-mono);font-size:11px;padding:1px 6px;border-radius:3px;border:1px dashed var(--line);color:var(--muted);white-space:nowrap}
+.lockt{font-size:11.5px;color:var(--work);font-family:var(--f-mono)}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:12px 14px;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:2px}
+.kpi:hover{border-color:var(--accent)}
+.kpi .v{font-family:var(--f-head);font-size:28px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+.kpi .l{font-size:12.5px;color:var(--muted)}
+.kpi .s{font-size:12px}
+.kpi.warn{border-left:3px solid var(--work)} .kpi.bad{border-left:3px solid var(--bad)} .kpi.good{border-left:3px solid var(--rel)}
+
+.dhead{display:flex;flex-direction:column;gap:3px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.dhead .pn{font-family:var(--f-mono);font-size:13px;color:var(--accent)}
+.dhead .meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:13px}
+.flow{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.flow li{font-size:12px;padding:3px 10px;border:1px solid var(--line);border-radius:3px;color:var(--muted);background:var(--sunk)}
+.flow li.done{color:var(--ink)}
+.flow li.cur{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:500}
+.flow li.x{background:var(--bad-bg);color:var(--bad);border-color:transparent}
+.flow li.arr{border:0;background:none;padding:0}
+.notice{font-size:13px;padding:8px 11px;border-radius:4px;background:var(--work-bg);color:var(--work)}
+.notice.info{background:var(--accent-soft);color:var(--ink)}
+.notice.bad{background:var(--bad-bg);color:var(--bad)}
+.notice.good{background:var(--rel-bg);color:var(--rel)}
+.sec{display:flex;flex-direction:column;gap:8px}
+dl.kv{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:5px 16px;margin:0}
+dl.kv dt{color:var(--muted)} dl.kv dd{margin:0}
+form.grid{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:8px 14px;align-items:center}
+form.grid .full{grid-column:1/-1}
+@media (max-width:560px){form.grid,dl.kv{grid-template-columns:minmax(0,1fr)} form.grid label{margin-bottom:-4px}}
+.files{display:flex;flex-wrap:wrap;gap:6px}
+.fchip{font-family:var(--f-mono);font-size:12px;border:1px solid var(--line);padding:3px 8px;border-radius:3px;background:var(--sunk);display:inline-flex;gap:6px;align-items:center}
+button.fchip{cursor:pointer;color:var(--accent)}
+.fchip img{width:28px;height:28px;object-fit:cover;border-radius:2px}
+.fchip .x{border:0;background:none;color:var(--muted);cursor:pointer;padding:0 2px}
+.hist{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.hist li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 10px;font-size:13px}
+.hist .rv{font-family:var(--f-mono);font-size:12px;color:var(--accent);min-width:56px}
+.hist .sub{grid-column:2;color:var(--muted);font-size:12px}
+.inline{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.checks{display:grid;gap:4px;max-height:200px;overflow:auto;border:1px solid var(--line);border-radius:4px;padding:8px}
+.checks label{display:flex;gap:8px;align-items:baseline}
+.tree{white-space:nowrap}
+.tree .br{color:var(--muted);font-family:var(--f-mono)}
+.sum{display:flex;gap:6px 18px;flex-wrap:wrap;font-size:13px}
+.sum b{font-family:var(--f-mono);font-weight:500}
+.empty{color:var(--muted);padding:18px 4px;text-align:center}
+.card{border:1px solid var(--line);border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
+.tasks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.tasks li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;padding:8px 2px;border-bottom:1px solid var(--line);cursor:pointer}
+.tasks li:last-child{border-bottom:0}
+.tasks li:hover{background:var(--sunk)}
+.tasks .t{font-size:12px;color:var(--work);font-weight:500}
+.tasks .o{font-size:13px}
+.tasks .go{grid-row:1/3;grid-column:2;align-self:center;color:var(--accent);font-size:12.5px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:5px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;background:var(--surface);padding:6px 12px;cursor:pointer;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);font-weight:500}
+.bar{height:8px;border-radius:4px;background:var(--obs-bg);overflow:hidden;display:flex}
+.bar i{display:block;height:100%}
+.ready{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:8px 16px;align-items:center}
+@media (max-width:560px){.ready{grid-template-columns:minmax(0,1fr)}}
+.matrix td.c{font-size:15px;color:var(--accent)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.cvwrap{position:relative;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--sunk)}
+canvas#cv{display:block;width:100%;height:460px;touch-action:none;cursor:grab}
+canvas#cv:active{cursor:grabbing}
+@media (max-width:560px){canvas#cv{height:340px}}
+.cvhint{position:absolute;left:10px;bottom:8px;font-size:11.5px;color:var(--muted);pointer-events:none}
+.diagram{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--sunk)}
+.diagram svg{display:block;min-width:860px;width:100%;height:auto}
+.diagram .ent rect{fill:var(--surface);stroke:var(--line)}
+.diagram .ent .hd{fill:var(--accent-soft);stroke:none}
+.diagram text{fill:var(--ink);font-family:var(--f-body);font-size:12px}
+.diagram .t1{font-family:var(--f-head);font-weight:600;font-size:13px}
+.diagram .f{fill:var(--muted);font-family:var(--f-mono);font-size:10.5px}
+.diagram .lbl{fill:var(--muted);font-size:10.5px}
+.diagram path{stroke:var(--accent);stroke-width:1.4;fill:none}
+.prose{display:flex;flex-direction:column;gap:8px;max-width:78ch}
+.prose ul{margin:0;padding-left:18px;display:grid;gap:4px}
+.yes{color:var(--rel);font-weight:500}.part{color:var(--work);font-weight:500}.no{color:var(--muted)}
+
+#ov{position:fixed;inset:0;background:rgba(10,16,20,.6);display:grid;place-items:center;z-index:30;padding:20px}
+#ov .box{background:var(--surface);border-radius:8px;padding:14px;max-width:min(900px,100%);max-height:90vh;overflow:auto;display:flex;flex-direction:column;gap:10px}
+#ov img{max-width:100%;max-height:70vh;display:block}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));max-width:min(560px,calc(100vw - 32px));
+  background:var(--ink);color:var(--bg);padding:9px 14px;border-radius:5px;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.25);z-index:40}
+#toast.bad{background:var(--bad);color:#fff}
+@media (prefers-reduced-motion:no-preference){#toast{animation:up .18s ease-out}@keyframes up{from{opacity:0;transform:translate(-50%,8px)}}}
+</style>
+
+<div class="app">
+  <aside class="side">
+    <div class="brand"><span class="logo">mP</span><div><b>Mini PLM</b><small>Ürün yaşam döngüsü demosu</small></div></div>
+    <input id="gq" type="search" placeholder="Ara: parça, ECR, gereksinim" aria-label="Genel arama">
+    <nav id="nav" aria-label="Ana gezinme"></nav>
+    <div class="side-foot">
+      <label for="user">Aktif kullanıcı</label>
+      <select id="user"></select>
+      <span class="role" id="roleTxt"></span>
+      <div class="acts">
+        <button class="btn sm" data-act="exportJson">Dışa aktar</button>
+        <button class="btn sm" data-act="importJson">İçe aktar</button>
+        <button class="btn sm" data-act="reset" id="resetBtn">Sıfırla</button>
+      </div>
+      <input type="file" id="importFile" accept=".json,application/json" hidden>
+    </div>
+  </aside>
+  <main id="main"></main>
+</div>
+<div id="ov" hidden></div>
+<div id="toast" hidden></div>
+
+<script>
+/* =========================================================
+   Sabitler
+   ========================================================= */
+const KEY='mini-plm-demo-v2';
+const ROOT='GS-100-000';
+const USERS=[
+  {id:'ece',name:'Ece Y.',role:'design',roleName:'Tasarım Mühendisi'},
+  {id:'burak',name:'Burak K.',role:'approver',roleName:'Ürün Müdürü (Onaylayan)'},
+  {id:'selin',name:'Selin T.',role:'mfg',roleName:'Üretim Mühendisi / ERP'}
+];
+const STATES={work:'Çalışmada',review:'İncelemede',released:'Yayınlandı',obsolete:'Geçersiz'};
+const CST={draft:'Taslak',eval:'Değerlendirmede',approved:'Onaylandı',done:'Uygulandı',rejected:'Reddedildi'};
+const RST={open:'Doğrulanmadı',pass:'Geçti',fail:'Kaldı'};
+const KST={ok:'Uygun',pending:'Beyan bekleniyor',nok:'Uygun değil'};
+const OPTIONS=[
+  {id:'kabin',name:'Kabin',vals:{var:'Kabinli',yok:'Kabinsiz'}},
+  {id:'hz',name:'Frekans',vals:{'50':'50 Hz','60':'60 Hz'}},
+  {id:'panel',name:'Kontrol paneli',vals:{AMF:'AMF',MAN:'Manuel'}}
+];
+const PRESETS=[
+  {name:'Standart (AB pazarı)',cfg:{kabin:'var',hz:'50',panel:'AMF'}},
+  {name:'Şantiye tipi',cfg:{kabin:'yok',hz:'50',panel:'MAN'}},
+  {name:'İhracat 60 Hz',cfg:{kabin:'var',hz:'60',panel:'AMF'}}
+];
+const NAV=[
+  ['Çalışma',[['home','Ana Sayfa'],['tasks','Görevlerim']]],
+  ['Ürün verisi',[['items','Parçalar'],['bom','Ürün Ağacı (EBOM)'],['variants','Varyantlar'],['viewer','3D Görünüm']]],
+  ['Süreçler',[['reqs','Gereksinimler'],['changes','Değişiklikler'],['mbom','Üretim Planı (MBOM)'],['erp','ERP Aktarımları']]],
+  ['Sistem',[['log','İşlem Geçmişi'],['arch','Mimari ve Kapsam']]]
+];
+const TITLES=Object.fromEntries(NAV.flatMap(([g,l])=>l.map(([k,t])=>[k,[g,t]])));TITLES.search=['Arama','Arama sonuçları'];
+
+/* =========================================================
+   Yardımcılar
+   ========================================================= */
+let S;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const now=()=>new Date().toISOString();
+const fmt=t=>new Date(t).toLocaleString('tr-TR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+const fnum=(n,d=1)=>Number(n).toLocaleString('tr-TR',{maximumFractionDigits:d});
+const me=()=>USERS.find(u=>u.id===S.user);
+const uname=id=>(USERS.find(u=>u.id===id)||{name:id}).name;
+const pad=n=>String(n).padStart(4,'0');
+const chip=s=>`<span class="chip s-${s}">${STATES[s]}</span>`;
+const cchip=s=>`<span class="chip c-${s}">${CST[s]}</span>`;
+const rchip=s=>`<span class="chip r-${s}">${RST[s]}</span>`;
+const kchip=s=>`<span class="chip k-${s}">${KST[s]}</span>`;
+const kg=n=>(n===''||n==null||isNaN(n))?'—':`${fnum(n)} kg`;
+const L=pn=>`<a class="lnk" data-act="goto" data-id="${pn}">${pn}</a>`;
+function nextRev(r){const a=r.split('');let i=a.length-1;while(i>=0){if(a[i]!=='Z'){a[i]=String.fromCharCode(a[i].charCodeAt(0)+1);return a.join('')}a[i]='A';i--}return 'A'+a.join('')}
+function fsize(b){return b>1048576?`${fnum(b/1048576)} MB`:`${fnum(b/1024,0)} KB`}
+let tt;
+function toast(m,bad){const t=$('#toast');t.textContent=m;t.className=bad?'bad':'';t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,3800)}
+function log(msg){S.log.unshift({t:now(),u:S.user,msg})}
+
+/* IndexedDB: yüklenen dosyaların içeriği (meta veri ana durumda) */
+const IDB={db:null,
+  open(){if(this.db)return Promise.resolve(this.db);return new Promise(res=>{try{const r=indexedDB.open('mini-plm-files',1);r.onupgradeneeded=()=>r.result.createObjectStore('f');r.onsuccess=()=>{this.db=r.result;res(this.db)};r.onerror=()=>res(null)}catch(e){res(null)}})},
+  async tx(mode,fn){const db=await this.open();if(!db)throw new Error('IndexedDB kullanılamıyor');return new Promise((res,rej)=>{const t=db.transaction('f',mode);const r=fn(t.objectStore('f'));t.oncomplete=()=>res(r&&r.result);t.onerror=()=>rej(t.error)})},
+  put(k,v){return this.tx('readwrite',s=>s.put(v,k))},
+  get(k){return this.tx('readonly',s=>s.get(k))},
+  del(k){return this.tx('readwrite',s=>s.delete(k))},
+  clear(){return this.tx('readwrite',s=>s.clear())}
+};
+
+/* =========================================================
+   Başlangıç verisi
+   ========================================================= */
+function defFiles(pn,kind){
+  if(kind==='Montaj')return[pn+'.sldasm',pn+'.slddrw',pn+'.pdf'];
+  if(kind==='Satınalma')return[pn+'_datasheet.pdf',pn+'.step'];
+  return[pn+'.sldprt',pn+'.slddrw',pn+'.pdf'];
+}
+function seed(){
+  const d=n=>new Date(Date.now()-n*864e5).toISOString();
+  const items={};
+  const I=(pn,name,kind,material,mass,x={})=>{
+    const it={pn,name,kind,material,mass,rev:x.rev||'A',ver:x.ver||1,state:x.state||'released',owner:'ece',co:x.co||null,
+      supplier:x.sup||'',comp:x.comp||'ok',files:defFiles(pn,kind).map(n=>({name:n})),
+      hist:x.hist||[{rev:'A',ver:1,t:d(60),by:'burak',note:'Rev A yayınlandı'}]};
+    it.released=it.state==='released'?{rev:it.rev,ver:it.ver,name,material,mass}:null;
+    items[pn]=it;
+  };
+  I('GS-100-000','100 kVA Jeneratör Seti','Montaj','—',0);
+  I('GS-100-100','Motor Grubu','Montaj','—',0);
+  I('GS-100-110','Dizel Motor, 4 silindir, 1500 d/d','Satınalma','—',420,{sup:'Motor tedarikçisi A'});
+  I('GS-100-120','Motor Takozu','Parça','NR kauçuk + S235 plaka',1.2);
+  I('GS-100-200','Alternatör 100 kVA, 400 V, 50 Hz','Satınalma','—',380,{sup:'Alternatör tedarikçisi B'});
+  I('GS-100-201','Alternatör 100 kVA, 480 V, 60 Hz','Satınalma','—',395,{sup:'Alternatör tedarikçisi B',comp:'pending'});
+  I('GS-100-300','Şasi Montajı','Montaj','—',0);
+  I('GS-100-310','Şasi Profili 120×60×4','Parça','S235JR',38);
+  I('GS-100-320','Yakıt Tankı 200 L','Parça','DC01 sac 2 mm',42);
+  I('GS-100-400','Kabin Montajı','Montaj','—',0);
+  I('GS-100-410','Kabin Paneli','Parça','DC01 sac 2 mm, toz boya RAL 7035',14,{rev:'B',hist:[
+    {rev:'B',ver:1,t:d(12),by:'burak',note:'Rev B yayınlandı'},
+    {rev:'B',ver:1,t:d(14),by:'ece',note:'ECR-0011 ile revize edildi (A → B)'},
+    {rev:'A',ver:1,t:d(60),by:'burak',note:'Rev A yayınlandı'}]});
+  I('GS-100-420','Ses Yalıtım Paneli 50 mm','Parça','Taş yünü 100 kg/m³ + delikli sac',6.5,{state:'work',ver:3,co:'ece',comp:'pending',hist:[
+    {rev:'A',ver:3,t:d(1),by:'ece',note:'v3 kaydedildi'},
+    {rev:'A',ver:2,t:d(3),by:'ece',note:'v2 kaydedildi'},
+    {rev:'A',ver:1,t:d(5),by:'ece',note:'Parça oluşturuldu'}]});
+  I('GS-100-500','Soğutma Grubu','Montaj','—',0);
+  I('GS-100-510','Radyatör, alüminyum çekirdek','Satınalma','—',48,{sup:'Radyatör tedarikçisi C',comp:'pending'});
+  I('GS-100-520','Fan Ø560, 6 kanat','Parça','PA66-GF30',2.8);
+  I('GS-100-600','Kontrol Paneli, AMF','Satınalma','—',18,{sup:'Panel tedarikçisi D'});
+  I('GS-100-601','Kontrol Paneli, Manuel','Satınalma','—',9,{sup:'Panel tedarikçisi D'});
+  let n=0;const B=(p,c,q,cond)=>({id:'L'+(++n),p,c,q,cond:cond||null});
+  const bom=[
+    B(ROOT,'GS-100-100',1),B(ROOT,'GS-100-200',1,{o:'hz',v:'50'}),B(ROOT,'GS-100-201',1,{o:'hz',v:'60'}),
+    B(ROOT,'GS-100-300',1),B(ROOT,'GS-100-400',1,{o:'kabin',v:'var'}),B(ROOT,'GS-100-500',1),
+    B(ROOT,'GS-100-600',1,{o:'panel',v:'AMF'}),B(ROOT,'GS-100-601',1,{o:'panel',v:'MAN'}),
+    B('GS-100-100','GS-100-110',1),B('GS-100-100','GS-100-120',4),
+    B('GS-100-300','GS-100-310',2),B('GS-100-300','GS-100-320',1),
+    B('GS-100-400','GS-100-410',6),
+    B('GS-100-500','GS-100-510',1),B('GS-100-500','GS-100-520',1)];
+  const changes=[
+    {id:'ECR-0012',title:'Fan çapı Ø560 → Ø630',reason:'ATB testinde hedefin altında kalındı (46 °C). Hava debisini artırmak için fan büyütülecek, soğutma grubu montajı güncellenecek.',
+     items:['GS-100-520','GS-100-500'],reqs:['REQ-002'],status:'eval',by:'ece',t:d(2),hist:[{t:d(2),u:'ece',msg:'Değerlendirmeye gönderildi'},{t:d(2),u:'ece',msg:'Oluşturuldu'}]},
+    {id:'ECR-0011',title:'Kabin paneli sac kalınlığı 1,5 → 2 mm',reason:'Ses testinde panel titreşimi görüldü; rijitliği artırmak için sac kalınlaştırıldı.',
+     items:['GS-100-410'],reqs:['REQ-001'],status:'done',by:'ece',t:d(16),hist:[{t:d(14),u:'ece',msg:'Uygulandı: GS-100-410 A → B'},{t:d(15),u:'burak',msg:'Onaylandı'},{t:d(16),u:'ece',msg:'Oluşturuldu ve gönderildi'}]}
+  ];
+  const reqs=[
+    {id:'REQ-001',title:'Ses basınç seviyesi',target:'≤ 75 dB(A) @ 7 m, %75 yük',cat:'Akustik',method:'Test',items:['GS-100-400','GS-100-410'],status:'open',measured:''},
+    {id:'REQ-002',title:'Soğutma kapasitesi (ATB)',target:'≥ 50 °C ortam sıcaklığı',cat:'Termal',method:'Test',items:['GS-100-500','GS-100-510','GS-100-520'],status:'fail',measured:'46 °C'},
+    {id:'REQ-003',title:'Performans sınıfı',target:'ISO 8528-5 G2',cat:'Elektriksel',method:'Test',items:['GS-100-110','GS-100-200','GS-100-201'],status:'pass',measured:'G2 sağlandı'},
+    {id:'REQ-004',title:'Kuru kütle (taşıma sınırı)',target:'≤ 1100 kg',cat:'Mekanik',method:'Analiz (BOM\'dan otomatik)',items:[ROOT],auto:'mass',limit:1100,status:'open',measured:''},
+    {id:'REQ-005',title:'Yakıt otonomisi',target:'≥ 8 saat @ %75 yük',cat:'Yakıt',method:'Analiz',items:['GS-100-320'],status:'pass',measured:'9,1 saat'}
+  ];
+  const ops=[
+    {id:'OP10',name:'Şasi ve yakıt tankı montajı',station:'İstasyon 1',min:40,parts:['GS-100-310','GS-100-320']},
+    {id:'OP20',name:'Motor–alternatör akuplajı',station:'İstasyon 2',min:75,parts:['GS-100-110','GS-100-200','GS-100-201']},
+    {id:'OP30',name:'Soğutma grubu montajı',station:'İstasyon 3',min:35,parts:['GS-100-510','GS-100-520']},
+    {id:'OP40',name:'Kontrol paneli ve kablaj',station:'İstasyon 4',min:60,parts:['GS-100-600','GS-100-601']},
+    {id:'OP50',name:'Kabin montajı',station:'İstasyon 5',min:50,parts:['GS-100-410']},
+    {id:'OP60',name:'Yük testi ve son kontrol',station:'Test odası',min:90,parts:[]}
+  ];
+  const logs=[
+    {t:d(1),u:'ece',msg:'GS-100-420 v3 kaydedildi (check-in)'},
+    {t:d(2),u:'ece',msg:'ECR-0012 değerlendirmeye gönderildi'},
+    {t:d(12),u:'burak',msg:'GS-100-410 Rev B yayınlandı'},
+    {t:d(14),u:'ece',msg:'ECR-0011 uygulandı: GS-100-410 A → B'}
+  ];
+  return {v:2,user:'ece',seq:{chg:12,erp:0,req:5,op:60},items,bom,bomSeq:n,changes,reqs,ops,erp:[],log:logs,
+    cfg:{kabin:'var',hz:'50',panel:'AMF'},
+    ui:{view:'home',sel:'GS-100-420',selc:'ECR-0012',selr:'REQ-002',rule:'working',q:''}};
+}
+function load(){try{const r=localStorage.getItem(KEY);if(r){const d=JSON.parse(r);if(d&&d.v===2&&d.items){S=d;return}}}catch(e){}S=seed()}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+
+/* =========================================================
+   Veri modeli işlemleri
+   ========================================================= */
+const optById=id=>OPTIONS.find(o=>o.id===id);
+const condTxt=c=>c?`${optById(c.o).name} = ${optById(c.o).vals[c.v]}`:'';
+const lineOn=b=>!b.cond||S.cfg[b.cond.o]===b.cond.v;
+const cfgLabel=(c=S.cfg)=>OPTIONS.map(o=>o.vals[c[o.id]]).join(' · ');
+const cfgKey=(c=S.cfg)=>OPTIONS.map(o=>c[o.id]).join('|');
+const kidsAll=pn=>S.bom.filter(b=>b.p===pn);
+const kidsCfg=pn=>S.bom.filter(b=>b.p===pn&&lineOn(b));
+const parents=pn=>[...new Set(S.bom.filter(b=>b.c===pn).map(b=>b.p))];
+function descendants(pn,set=new Set()){kidsAll(pn).forEach(k=>{if(!set.has(k.c)){set.add(k.c);descendants(k.c,set)}});return set}
+function ancestors(pn,set=new Set()){parents(pn).forEach(p=>{if(!set.has(p)){set.add(p);ancestors(p,set)}});return set}
+/* yapılandırılmış (100%) BOM gezintisi */
+function walk(pn,lvl=0,mult=1,qty=1,out=[],line=null){out.push({pn,lvl,qty,total:mult,line});kidsCfg(pn).forEach(k=>walk(k.c,lvl+1,mult*k.q,k.q,out,k));return out}
+const uniq=rows=>[...new Set(rows.map(r=>r.pn))];
+function leafRows(rows){return rows.filter(r=>r.lvl>0&&!kidsCfg(r.pn).length)}
+const leafPns=()=>uniq(leafRows(walk(ROOT)));
+/* revizyon kuralı */
+function byRule(it,rule=S.ui.rule){if(rule==='released'){return it.released?{...it,...it.released,state:'released'}:null}return it}
+function cfgMass(rule='working'){return leafRows(walk(ROOT)).reduce((s,r)=>{const v=byRule(S.items[r.pn],rule);return s+((v&&Number(v.mass))||0)*r.total},0)}
+function blockers(root=ROOT){const r=[];uniq(walk(root)).forEach(pn=>{const it=S.items[pn];if(it.state!=='released')r.push(`${pn} (${STATES[it.state]})`);else if(it.co)r.push(`${pn} (kilitli)`)});return r}
+function reqEval(r){if(r.auto==='mass'){const m=cfgMass();return{...r,status:m<=r.limit?'pass':'fail',measured:`${fnum(m)} kg · ${cfgLabel()}`}}return r}
+function aggRows(rows){const m={};rows.forEach(r=>{if(!r.lvl)return;m[r.pn]=m[r.pn]||{rev:S.items[r.pn]?.rev,name:S.items[r.pn]?.name,total:0};m[r.pn].total+=r.total});return m}
+function aggLines(lines){const m={};lines.forEach(l=>{if(!l.lvl)return;m[l.pn]=m[l.pn]||{rev:l.rev,name:l.name,total:0};m[l.pn].total+=l.total});return m}
+function erpDiff(){
+  const last=S.erp.find(e=>e.key===cfgKey());
+  const cur=aggRows(walk(ROOT)),prev=last?aggLines(last.lines):{};
+  const out=[];
+  Object.keys(cur).forEach(pn=>{const c=cur[pn],p=prev[pn];
+    if(!p)out.push({pn,kind:'Eklendi',txt:`Rev ${c.rev} · ${c.total} adet`});
+    else{if(p.rev!==c.rev)out.push({pn,kind:'Revizyon',txt:`${p.rev} → ${c.rev}`});if(p.total!==c.total)out.push({pn,kind:'Adet',txt:`${p.total} → ${c.total}`})}});
+  Object.keys(prev).forEach(pn=>{if(!cur[pn])out.push({pn,kind:'Çıkarıldı',txt:`Rev ${prev[pn].rev}`})});
+  return {last,list:out};
+}
+function unassigned(){const a=new Set(S.ops.flatMap(o=>o.parts));return leafPns().filter(p=>!a.has(p))}
+
+/* görevler (worklist) */
+function tasks(uid=S.user){
+  const u=USERS.find(x=>x.id===uid),t=[],I=Object.values(S.items);
+  const add=(type,ref,kind,text)=>t.push({type,ref,kind,text});
+  if(u.role==='design'){
+    I.filter(i=>i.co===uid).forEach(i=>add('Check-in bekliyor',i.pn,'item',i.name));
+    I.filter(i=>i.state==='work'&&!i.co&&i.owner===uid).forEach(i=>add('İncelemeye gönderilmeyi bekliyor',i.pn,'item',i.name));
+    S.changes.filter(c=>c.status==='approved').forEach(c=>add('Onaylı ECR uygulanacak',c.id,'chg',c.title));
+    S.changes.filter(c=>c.status==='draft'&&c.by===uid).forEach(c=>add('Taslak ECR gönderilmedi',c.id,'chg',c.title));
+    S.reqs.map(reqEval).filter(r=>r.status==='fail').forEach(r=>add('Karşılanmayan gereksinim',r.id,'req',r.title));
+  }
+  if(u.role==='approver'){
+    I.filter(i=>i.state==='review').forEach(i=>add('Yayın onayı bekliyor',i.pn,'item',i.name));
+    S.changes.filter(c=>c.status==='eval').forEach(c=>add('ECR değerlendirmesi bekliyor',c.id,'chg',c.title));
+  }
+  if(u.role==='mfg'){
+    const d=erpDiff();
+    if(!blockers().length&&d.list.length)add('Güncel yapılandırma ERP\'ye aktarılmadı',ROOT,'erp',`${cfgLabel()} · ${d.list.length} fark`);
+    unassigned().forEach(pn=>add('MBOM\'da operasyona atanmamış',pn,'mbom',S.items[pn].name));
+  }
+  return t;
+}
+
+/* =========================================================
+   Yetki ve iş kuralları
+   ========================================================= */
+function itemActions(it){
+  const u=me(),d=u.role==='design',ap=u.role==='approver';
+  const notRelKids=[...new Set(kidsAll(it.pn).map(k=>k.c))].map(c=>S.items[c]).filter(x=>x.state!=='released');
+  const liveParents=parents(it.pn).filter(p=>S.items[p].state!=='obsolete');
+  return [
+    {act:'checkout',label:'Check-out (düzenle)',pri:true,ok:d&&it.state==='work'&&!it.co,
+     why:!d?'Check-out yalnızca Tasarım Mühendisi rolünde yapılır.':it.state!=='work'?`${STATES[it.state]} durumundaki parça doğrudan değiştirilemez. Değişiklik için ECR açın.`:it.co===u.id?'Parça zaten sizde (check-out yapılmış).':it.co?`${uname(it.co)} tarafından kilitli.`:''},
+    {act:'submit',label:'İncelemeye gönder',ok:d&&it.state==='work'&&!it.co,
+     why:!d?'Yalnızca Tasarım Mühendisi incelemeye gönderebilir.':it.state!=='work'?'Sadece Çalışmada durumundaki parça gönderilir.':it.co?'Önce check-in yapılmalı (düzenleme kilidi açık).':''},
+    {act:'approve',label:'Onayla ve yayınla',pri:true,ok:ap&&it.state==='review'&&!notRelKids.length,
+     why:!ap?'Onay yalnızca Ürün Müdürü (Onaylayan) rolündedir.':it.state!=='review'?'Sadece İncelemede durumundaki parça onaylanır.':notRelKids.length?`Alt bileşenler yayınlanmamış: ${notRelKids.map(x=>x.pn).join(', ')}`:''},
+    {act:'reject',label:'Reddet',ok:ap&&it.state==='review',
+     why:!ap?'Reddetme yalnızca Onaylayan rolündedir.':'Sadece İncelemede durumundaki parça reddedilir.'},
+    {act:'obsolete',label:'Geçersiz kıl',ok:ap&&it.state==='released'&&!liveParents.length,
+     why:!ap?'Yalnızca Onaylayan rolü geçersiz kılabilir.':it.state!=='released'?'Sadece yayınlanmış parça geçersiz kılınır.':`Hâlâ kullanılıyor: ${liveParents.join(', ')}`}
+  ];
+}
+function chgActions(c){
+  const u=me(),d=u.role==='design',ap=u.role==='approver';
+  return [
+    {act:'csubmit',label:'Değerlendirmeye gönder',pri:true,ok:c.status==='draft',why:'Sadece taslak talep gönderilebilir.'},
+    {act:'capprove',label:'Onayla',pri:true,ok:ap&&c.status==='eval',why:!ap?'ECR onayı yalnızca Onaylayan rolündedir.':'Sadece değerlendirmedeki talep onaylanır.'},
+    {act:'creject',label:'Reddet',ok:ap&&c.status==='eval',why:!ap?'Reddetme yalnızca Onaylayan rolündedir.':'Sadece değerlendirmedeki talep reddedilir.'},
+    {act:'capply',label:'Uygula (revizyon aç)',pri:true,ok:d&&c.status==='approved',why:!d?'Değişikliği Tasarım Mühendisi uygular.':'Önce talep onaylanmalı.'}
+  ];
+}
+const btns=list=>`<div class="acts">${list.map(a=>`<button class="btn${a.pri?' pri':''}${a.ok?'':' off'}" data-act="${a.act}" aria-disabled="${!a.ok}" title="${a.ok?'':esc(a.why)}">${a.label}</button>`).join('')}</div>`;
+
+/* =========================================================
+   Görünümler
+   ========================================================= */
+const V={};
+function head(view,right=''){const [g,t]=TITLES[view];return`<header class="ph"><div><div class="eyebrow">${g}</div><h1>${t}</h1></div>${right}</header>`}
+const cfgChip=()=>`<button class="cfgchip" data-act="view" data-v="variants" title="Konfigürasyonu değiştir"><span class="muted">Konfigürasyon</span><b>${cfgLabel()}</b></button>`;
+
+function taskList(tk){
+  if(!tk.length)return`<p class="muted">Bu rolde bekleyen görev yok. Kullanıcıyı değiştirerek diğer rollerin görevlerini görebilirsiniz.</p>`;
+  return`<ul class="tasks">${tk.map(t=>`<li data-act="task" data-kind="${t.kind}" data-id="${t.ref}" tabindex="0"><span class="t">${esc(t.type)}</span><span class="go">Aç →</span><span class="o"><span class="mono">${t.ref}</span> · ${esc(t.text)}</span></li>`).join('')}</ul>`;
+}
+function logList(n){return`<ul class="hist">${S.log.slice(0,n).map(l=>`<li><span class="rv">${fmt(l.t).slice(0,5)}</span><span>${esc(l.msg)}</span><span class="sub">${uname(l.u)} · ${fmt(l.t)}</span></li>`).join('')}</ul>`}
+
+V.home=()=>{
+  const u=me(),tk=tasks(),rows=walk(ROOT),pns=uniq(rows);
+  const rel=pns.filter(p=>S.items[p].state==='released').length;
+  const rq=S.reqs.map(reqEval),pass=rq.filter(r=>r.status==='pass').length,fail=rq.filter(r=>r.status==='fail').length,open=rq.length-pass-fail;
+  const pend=pns.filter(p=>S.items[p].comp!=='ok');
+  const openC=S.changes.filter(c=>['draft','eval','approved'].includes(c.status)).length;
+  const d=erpDiff(),bl=blockers(),m=cfgMass(),lim=S.reqs.find(r=>r.auto==='mass');
+  const un=unassigned();
+  const pct=Math.round(rel/pns.length*100);
+  return head('home',cfgChip())+`
+  <p class="lead">Aktif kullanıcı: <b>${u.name}</b> (${u.roleName}). Örnek veri bir 100 kVA jeneratör setinin ürün ağacı, değişiklikleri ve gereksinimlerinden oluşuyor.</p>
+  <div class="kpis">
+    <button class="kpi ${tk.length?'warn':'good'}" data-act="view" data-v="tasks"><span class="l">Görevlerim</span><span class="v">${tk.length}</span><span class="s muted">${tk.length?'işlem bekliyor':'bekleyen yok'}</span></button>
+    <button class="kpi" data-act="view" data-v="changes"><span class="l">Açık değişiklik talebi</span><span class="v">${openC}</span><span class="s muted">taslak, değerlendirme, onaylı</span></button>
+    <button class="kpi ${pct===100?'good':'warn'}" data-act="view" data-v="bom"><span class="l">Yayınlanmış kalem</span><span class="v">${rel}/${pns.length}</span><span class="s muted">bu konfigürasyonda %${pct}</span></button>
+    <button class="kpi ${fail?'bad':open?'warn':'good'}" data-act="view" data-v="reqs"><span class="l">Gereksinimler</span><span class="v">${pass}/${rq.length}</span><span class="s">${fail?`<span class="chip r-fail">${fail} kaldı</span> `:''}${open?`<span class="chip r-open">${open} açık</span>`:''}</span></button>
+    <button class="kpi ${pend.length?'warn':'good'}" data-act="goto" data-id="${pend[0]||ROOT}"><span class="l">Malzeme uyumluluğu</span><span class="v">${pns.length-pend.length}/${pns.length}</span><span class="s muted">${pend.length?`${pend.length} kalemde beyan eksik`:'tümü uygun'}</span></button>
+  </div>
+  <div class="split even">
+    <section class="pane"><div class="pane-head"><h3>Görevlerim</h3><button class="btn sm" data-act="view" data-v="tasks">Tümü</button></div>${taskList(tk.slice(0,5))}</section>
+    <section class="pane"><div class="pane-head"><h3>Son işlemler</h3><button class="btn sm" data-act="view" data-v="log">Tümü</button></div>${logList(6)}</section>
+  </div>
+  <section class="pane"><h3>Ürün hazırlık durumu · ${ROOT}</h3>
+    <div class="ready">
+      <span class="muted">Yayın oranı</span><div class="inline"><div class="bar" style="flex:1;min-width:120px"><i style="width:${pct}%;background:var(--rel)"></i></div><span class="mono">%${pct}</span></div>
+      <span class="muted">Hesaplanan kuru kütle</span><span>${kg(m)} ${lim?`<span class="muted">· sınır ${fnum(lim.limit)} kg</span> ${rchip(m<=lim.limit?'pass':'fail')}`:''}</span>
+      <span class="muted">ERP hazırlığı</span><span>${bl.length?`<span class="chip c-rejected">Engelli</span> <span class="small muted">${bl.length} kalem yayınlanmamış veya kilitli</span>`:`<span class="chip s-released">Hazır</span> <span class="small muted">${d.last?`son aktarımdan bu yana ${d.list.length} fark`:'bu konfigürasyon hiç aktarılmadı'}</span>`}</span>
+      <span class="muted">Üretim planı</span><span>${un.length?`<span class="chip k-pending">${un.length} parça atanmamış</span>`:'<span class="chip s-released">Tüm parçalar operasyonlara atanmış</span>'}</span>
+    </div>
+  </section>`;
+};
+
+V.tasks=()=>{
+  const blocks=USERS.map(u=>{const t=tasks(u.id);return`<section class="pane"><div class="pane-head"><h2>${u.name} <span class="muted small">· ${u.roleName}</span></h2>${u.id===S.user?'<span class="chip c-done">Aktif kullanıcı</span>':`<button class="btn sm" data-act="setuser" data-id="${u.id}">Bu kullanıcıya geç</button>`}</div>${u.id===S.user?taskList(t):`<p class="muted small">${t.length} görev bekliyor. Görevler yalnızca ilgili kullanıcıya açılır.</p>`}</section>`});
+  return head('tasks')+`<p class="lead">Görevler, iş akışı durumlarından ve rollerden otomatik türetilir. Bir parça incelemeye gönderildiğinde onaylayanın listesine düşer; onaylı ECR tasarımcıya döner.</p>`+blocks.join('');
+};
+
+/* ---------- Parçalar ---------- */
+function itemRows(){
+  return Object.values(S.items).sort((a,b)=>a.pn.localeCompare(b.pn)).map(it=>`<tr class="click${S.ui.sel===it.pn?' sel':''}" data-act="sel" data-id="${it.pn}" tabindex="0">
+    <td class="mono">${it.pn}</td><td>${esc(it.name)}${it.co?`<div class="lockt">kilitli · ${uname(it.co)}</div>`:''}</td>
+    <td class="mono">${it.rev}.${it.ver}</td><td>${chip(it.state)}</td></tr>`).join('');
+}
+V.items=()=>head('items')+`<div class="split">
+    <section class="pane">
+      <div class="pane-head"><h2>Parça listesi</h2><button class="btn" data-act="newItem">Yeni parça</button></div>
+      <div class="tbl"><table><thead><tr><th>Parça no</th><th>Ad</th><th>Rev.v</th><th>Durum</th></tr></thead><tbody>${itemRows()}</tbody></table></div>
+      <p class="muted small">Rev.v: revizyon harfi ve o revizyon içindeki versiyon. Her check-in versiyonu artırır; revizyon yalnızca onaylı bir ECR ile değişir.</p>
+    </section>
+    <section class="pane" id="detail">${S.ui.sel==='__new'?vNewItem():vItem(S.items[S.ui.sel])}</section>
+  </div>`;
+function vNewItem(){
+  const n=Object.keys(S.items).length;
+  return `<div class="dhead"><h2>Yeni parça</h2><div class="meta">Rev A, versiyon 1, Çalışmada olarak oluşturulur</div></div>
+  <form class="grid" data-form="newItem">
+    <label for="n-pn">Parça no</label><input id="n-pn" class="mono" required value="GS-100-${700+n}">
+    <label for="n-name">Ad</label><input id="n-name" required placeholder="ör. Egzoz Susturucu">
+    <label for="n-kind">Tür</label><select id="n-kind"><option>Parça</option><option>Montaj</option><option>Satınalma</option></select>
+    <label for="n-mat">Malzeme</label><input id="n-mat" placeholder="ör. S235JR">
+    <label for="n-mass">Kütle (kg)</label><input id="n-mass" type="number" step="0.1" min="0">
+    <div class="full acts"><button class="btn pri" type="submit">Oluştur</button><button class="btn" type="button" data-act="sel" data-id="${ROOT}">Vazgeç</button></div>
+  </form>`;
+}
+function fileChips(it,mine){
+  return it.files.map((f,i)=>f.id
+    ?`<span class="fchip"><button class="fchip" style="border:0;padding:0;background:none" data-act="openfile" data-fid="${f.id}" data-name="${esc(f.name)}" data-type="${esc(f.type)}">${(f.type||'').startsWith('image/')?`<img data-thumb="${f.id}" alt="">`:''}${esc(f.name)}</button><span class="muted">${fsize(f.size)}</span>${mine?`<button class="x" data-act="fdel" data-i="${i}" aria-label="Dosyayı kaldır">×</button>`:''}</span>`
+    :`<span class="fchip" title="Örnek veri: içerik yok">${esc(f.name)}</span>`).join('');
+}
+function vItem(it){
+  if(!it)return`<div class="empty">Soldan bir parça seçin.</div>`;
+  const mine=it.co===S.user;
+  const order=['work','review','released'],ci=order.indexOf(it.state);
+  const flow=`<ol class="flow" aria-label="Yaşam döngüsü">${order.map((s,i)=>`<li class="${it.state==='obsolete'||i<ci?'done':i===ci?'cur':''}">${STATES[s]}</li>${i<2?'<li class="arr muted">→</li>':''}`).join('')}${it.state==='obsolete'?'<li class="arr muted">→</li><li class="x">Geçersiz</li>':''}</ol>`;
+  let notice='';
+  if(mine)notice=`<div class="notice">Check-out sizde. Kaydettiğinizde versiyon v${it.ver+1} olur.</div>`;
+  else if(it.co)notice=`<div class="notice">${uname(it.co)} bu parçayı düzenliyor. Siz yalnızca görüntüleyebilirsiniz.</div>`;
+  else if(it.state==='released')notice=`<div class="notice info">Yayınlanmış revizyon kilitlidir. Değiştirmek için ECR açın.</div>`;
+  if(it.released&&it.released.rev!==it.rev)notice+=`<div class="notice info">Son yayınlanan revizyon: <b>Rev ${it.released.rev}</b>. “Son yayınlanan” revizyon kuralıyla bakan herkes (ör. üretim) hâlâ onu görür.</div>`;
+  const compSel=`<select id="f-comp">${Object.entries(KST).map(([k,v])=>`<option value="${k}"${it.comp===k?' selected':''}>${v}</option>`).join('')}</select>`;
+  const attrs=mine?`<form class="grid" data-form="checkin">
+      <label for="f-name">Ad</label><input id="f-name" value="${esc(it.name)}" required>
+      <label for="f-mat">Malzeme</label><input id="f-mat" value="${esc(it.material)}">
+      <label for="f-mass">Kütle (kg)</label><input id="f-mass" type="number" step="0.1" min="0" value="${esc(it.mass)}">
+      ${it.kind==='Satınalma'?`<label for="f-sup">Tedarikçi</label><input id="f-sup" value="${esc(it.supplier)}">`:''}
+      <label for="f-comp">RoHS / REACH</label>${compSel}
+      <div class="full acts"><button class="btn pri" type="submit">Kaydet ve check-in</button><button class="btn" type="button" data-act="cancelco">Check-out iptal</button></div>
+    </form>`
+    :`<dl class="kv"><dt>Tür</dt><dd>${it.kind}</dd><dt>Malzeme</dt><dd>${esc(it.material)||'—'}</dd><dt>Kütle</dt><dd>${it.kind==='Montaj'?'<span class="muted">alt bileşenlerden hesaplanır</span>':kg(it.mass)}</dd>
+      ${it.kind==='Satınalma'?`<dt>Tedarikçi</dt><dd>${esc(it.supplier)||'—'}</dd>`:''}<dt>RoHS / REACH</dt><dd>${kchip(it.comp)}</dd><dt>Sorumlu</dt><dd>${uname(it.owner)}</dd></dl>`;
+  let bomSec='';
+  if(it.kind==='Montaj'){
+    const ks=kidsAll(it.pn);
+    const excl=new Set([it.pn,...ancestors(it.pn)]);
+    const opts=Object.values(S.items).filter(x=>!excl.has(x.pn)&&x.state!=='obsolete').sort((a,b)=>a.pn.localeCompare(b.pn));
+    bomSec=`<div class="sec"><h3>Alt bileşenler (150% BOM, tüm varyantlar)</h3>
+      ${ks.length?`<div class="tbl"><table><thead><tr><th>Parça no</th><th>Ad</th><th class="num">Adet</th><th>Varyant koşulu</th><th>Durum</th>${mine?'<th></th>':''}</tr></thead><tbody>
+      ${ks.map(k=>{const c=S.items[k.c];return`<tr class="${lineOn(k)?'':'dim'}"><td>${L(c.pn)}</td><td>${esc(c.name)}</td><td class="num">${k.q}</td><td>${k.cond?`<span class="cond">${esc(condTxt(k.cond))}</span>`:'<span class="muted small">her zaman</span>'}</td><td>${chip(c.state)}</td>${mine?`<td><button class="btn sm" data-act="bomdel" data-lid="${k.id}">Çıkar</button></td>`:''}</tr>`}).join('')}
+      </tbody></table></div><p class="muted small">Soluk satırlar seçili konfigürasyonda (${cfgLabel()}) yer almıyor.</p>`:'<p class="muted">Henüz alt bileşen yok.</p>'}
+      ${mine?`<form class="inline" data-form="bomadd"><select id="b-child" aria-label="Eklenecek parça">${opts.map(o=>`<option value="${o.pn}">${o.pn} · ${esc(o.name)}</option>`).join('')}</select>
+        <input id="b-qty" type="number" min="1" value="1" style="width:72px" aria-label="Adet">
+        <select id="b-cond" aria-label="Varyant koşulu"><option value="">Koşulsuz</option>${OPTIONS.flatMap(o=>Object.entries(o.vals).map(([v,l])=>`<option value="${o.id}:${v}">${o.name} = ${l}</option>`)).join('')}</select>
+        <button class="btn" type="submit">Ekle</button></form>`
+        :'<p class="muted small">BOM düzenlemek için montajı check-out yapın.</p>'}
+    </div>`;
+  }
+  const wu=parents(it.pn);
+  const rel=S.changes.filter(c=>c.items.includes(it.pn));
+  const rq=S.reqs.filter(r=>r.items.includes(it.pn)).map(reqEval);
+  return `<div class="dhead"><span class="pn">${it.pn}</span><h2>${esc(it.name)}</h2>
+      <div class="meta"><span class="mono">Rev ${it.rev} · v${it.ver}</span><span>${it.kind}</span>${chip(it.state)}</div></div>
+    ${flow}${notice}${btns(itemActions(it))}
+    <div class="sec"><h3>Öznitelikler</h3>${attrs}</div>
+    ${bomSec}
+    <div class="sec"><h3>Nerede kullanılıyor</h3>${wu.length?`<div class="inline">${wu.map(p=>`${L(p)} <span class="muted">${esc(S.items[p].name)}</span>`).join('<span class="muted">·</span>')}</div>`:'<p class="muted">Hiçbir montajda kullanılmıyor.</p>'}</div>
+    ${rq.length?`<div class="sec"><h3>Karşıladığı gereksinimler</h3><div class="inline">${rq.map(r=>`<a class="lnk" data-act="gotoreq" data-id="${r.id}">${r.id}</a> ${esc(r.title)} ${rchip(r.status)}`).join('<span class="muted">·</span>')}</div></div>`:''}
+    <div class="sec"><h3>Dosyalar (dataset)</h3><div class="files">${fileChips(it,mine)}</div>
+      ${mine?`<label class="small muted" for="f-file">Dosya ekle (görsel, PDF, STEP…; içerik bu tarayıcıda saklanır)</label><input id="f-file" type="file" multiple>`:''}</div>
+    ${rel.length?`<div class="sec"><h3>İlgili değişiklikler</h3><div class="inline">${rel.map(c=>`<a class="lnk" data-act="gochg" data-id="${c.id}">${c.id}</a> ${cchip(c.status)}`).join(' ')}</div></div>`:''}
+    <div class="sec"><h3>Revizyon ve versiyon geçmişi</h3><ul class="hist">${it.hist.map(h=>`<li><span class="rv">${h.rev}.${h.ver}</span><span>${esc(h.note)}</span><span class="sub">${uname(h.by)} · ${fmt(h.t)}</span></li>`).join('')}</ul></div>`;
+}
+
+/* ---------- Ürün ağacı ---------- */
+V.bom=()=>{
+  const rule=S.ui.rule,rows=walk(ROOT),bl=blockers();
+  const m=cfgMass(rule);
+  return head('bom',cfgChip())+`<section class="pane">
+    <div class="pane-head">
+      <div class="inline"><span class="muted small">Revizyon kuralı</span><div class="seg" role="group" aria-label="Revizyon kuralı">
+        <button data-act="rule" data-v="working" aria-pressed="${rule==='working'}">Son çalışan</button>
+        <button data-act="rule" data-v="released" aria-pressed="${rule==='released'}">Son yayınlanan</button></div></div>
+      <div class="acts"><button class="btn sm" data-act="copyBom">Excel için kopyala</button><button class="btn sm" data-act="csvBom">CSV indir</button></div>
+    </div>
+    <p class="muted small">${rule==='working'?'Tasarımcının gördüğü görünüm: her parçanın en güncel revizyonu, onaylanmamış olsa bile.':'Üretimin gördüğü görünüm: yalnızca yayınlanmış revizyonlar. Hiç yayınlanmamış kalemler boş görünür.'}</p>
+    <div class="sum"><span>Satır <b>${rows.length}</b></span><span>Farklı kalem <b>${uniq(rows).length}</b></span><span>Hesaplanan kuru kütle <b>${kg(Math.round(m*10)/10)}</b></span></div>
+    <div class="tbl"><table><thead><tr><th>Sv.</th><th>Parça no</th><th>Ad</th><th>Rev.v</th><th class="num">Adet</th><th class="num">Toplam</th><th>Koşul</th><th>Durum</th></tr></thead><tbody>
+      ${rows.map(r=>{const raw=S.items[r.pn],it=byRule(raw,rule);return`<tr><td class="mono muted">${r.lvl}</td>
+        <td class="tree"><span style="padding-left:${r.lvl*16}px">${r.lvl?'<span class="br">└ </span>':''}${L(r.pn)}</span></td>
+        <td>${it?esc(it.name):'<span class="muted">Yayınlanmış revizyon yok</span>'}${rule==='working'&&raw.co?`<div class="lockt">kilitli · ${uname(raw.co)}</div>`:''}</td>
+        <td class="mono">${it?`${it.rev}.${it.ver}`:'—'}</td>
+        <td class="num">${r.lvl?r.qty:'—'}</td><td class="num">${r.lvl?r.total:'—'}</td>
+        <td>${r.line&&r.line.cond?`<span class="cond">${esc(condTxt(r.line.cond))}</span>`:''}</td><td>${it?chip(it.state):''}</td></tr>`}).join('')}
+    </tbody></table></div>
+    ${bl.length?`<div class="notice bad">ERP'ye aktarılamaz. Yayınlanmamış veya kilitli kalemler: ${bl.map(esc).join(', ')}</div>`:`<div class="notice good">Tüm kalemler yayınlanmış. Bu konfigürasyon ERP'ye aktarılabilir.</div>`}
+    <div class="acts"><button class="btn pri${me().role==='mfg'&&!bl.length?'':' off'}" data-act="erp" aria-disabled="${!(me().role==='mfg'&&!bl.length)}">ERP'ye gönder</button>
+    <span class="muted small">Aktarımı Üretim Mühendisi / ERP rolü yapar.</span></div>
+  </section>`;
+};
+
+/* ---------- Varyantlar ---------- */
+V.variants=()=>{
+  const cl=S.bom.filter(b=>b.cond);
+  return head('variants')+`<p class="lead">Ürün ağacı tüm seçenekleri içeren tek bir yapı olarak tutulur (150% BOM). Satır üzerindeki varyant koşulları, seçilen konfigürasyona göre üretilecek gerçek ağacı (100% BOM) belirler. Seçim; ürün ağacı, 3D görünüm, kütle hesabı, MBOM ve ERP aktarımında kullanılır.</p>
+  <div class="split even">
+    <section class="pane"><h2>Seçenekler</h2>
+      ${OPTIONS.map(o=>`<div class="sec"><h3>${o.name}</h3><div class="seg" role="group" aria-label="${o.name}">${Object.entries(o.vals).map(([v,l])=>`<button data-act="opt" data-o="${o.id}" data-v="${v}" aria-pressed="${S.cfg[o.id]===v}">${l}</button>`).join('')}</div></div>`).join('')}
+      <div class="sec"><h3>Hazır satış konfigürasyonları</h3><div class="acts">${PRESETS.map((p,i)=>`<button class="btn sm" data-act="preset" data-i="${i}">${p.name}</button>`).join('')}</div></div>
+    </section>
+    <section class="pane"><h2>Seçili konfigürasyonun sonucu</h2>
+      <dl class="kv"><dt>Konfigürasyon</dt><dd><b>${cfgLabel()}</b></dd><dt>Farklı kalem</dt><dd>${uniq(walk(ROOT)).length}</dd><dt>Kuru kütle</dt><dd>${kg(Math.round(cfgMass()*10)/10)}</dd>
+      <dt>Kütle gereksinimi</dt><dd>${(()=>{const r=reqEval(S.reqs.find(x=>x.auto==='mass')||{});return r.id?`${rchip(r.status)} <span class="muted small">${r.target}</span>`:'—'})()}</dd>
+      <dt>ERP hazırlığı</dt><dd>${blockers().length?'<span class="chip c-rejected">Engelli</span>':'<span class="chip s-released">Hazır</span>'}</dd></dl>
+    </section>
+  </div>
+  <section class="pane"><h2>Koşullu ürün ağacı satırları</h2>
+    <div class="tbl"><table><thead><tr><th>Üst montaj</th><th>Alt kalem</th><th>Ad</th><th>Koşul</th><th>Bu konfigürasyonda</th></tr></thead><tbody>
+    ${cl.map(b=>`<tr class="${lineOn(b)?'':'dim'}"><td>${L(b.p)}</td><td>${L(b.c)}</td><td>${esc(S.items[b.c].name)}</td><td><span class="cond">${esc(condTxt(b.cond))}</span></td><td>${lineOn(b)?'<span class="chip s-released">Dahil</span>':'<span class="chip s-obsolete">Hariç</span>'}</td></tr>`).join('')}
+    </tbody></table></div></section>`;
+};
+
+/* ---------- 3D görünüm ---------- */
+const GEO={
+  'GS-100-310':[[0,0,0,3000,120,120],[0,980,0,3000,120,120]],
+  'GS-100-320':[[250,140,0,2000,820,110]],
+  'GS-100-120':[[1350,330,120,90,90,40],[2050,330,120,90,90,40],[1350,690,120,90,90,40],[2050,690,120,90,90,40]],
+  'GS-100-110':[[1300,270,160,900,580,720]],
+  'GS-100-200':[[680,330,200,620,460,520]],
+  'GS-100-201':[[620,320,200,680,480,560]],
+  'GS-100-520':[[2260,300,280,70,520,520]],
+  'GS-100-510':[[2380,120,140,120,880,980]],
+  'GS-100-600':[[260,380,780,320,260,460]],
+  'GS-100-601':[[300,410,780,240,200,340]],
+  'GS-100-420':[[2600,140,140,60,840,900]],
+  'GS-100-410':[[-60,-60,0,3160,1240,1560]]
+};
+const SHELL='GS-100-410';
+const MATC={'GS-100-310':[74,82,92],'GS-100-320':[52,84,118],'GS-100-120':[48,48,52],'GS-100-110':[196,118,38],'GS-100-200':[44,96,156],'GS-100-201':[86,78,168],
+  'GS-100-520':[64,68,74],'GS-100-510':[150,160,170],'GS-100-600':[214,214,206],'GS-100-601':[180,186,160],'GS-100-420':[190,170,120],'GS-100-410':[150,166,178]};
+const STC={work:[217,152,30],review:[96,116,224],released:[52,160,100],obsolete:[140,140,140]};
+const KCC={ok:[52,160,100],pending:[217,152,30],nok:[204,64,64]};
+const VW={yaw:-0.72,pitch:0.42,zoom:1,sel:null,showCab:true,mode:'mat',polys:[],shell:[]};
+function viewerParts(){return uniq(walk(ROOT)).filter(pn=>GEO[pn])}
+function partColor(pn){const it=S.items[pn];if(VW.mode==='state')return STC[it.state];if(VW.mode==='comp')return KCC[it.comp];return MATC[pn]||[150,150,150]}
+V.viewer=()=>{
+  const parts=viewerParts();const sel=VW.sel&&S.items[VW.sel];
+  const legend=VW.mode==='state'?Object.entries(STC).map(([k,c])=>`<span><i style="background:rgb(${c})"></i>${STATES[k]}</span>`).join(''):VW.mode==='comp'?Object.entries(KCC).map(([k,c])=>`<span><i style="background:rgb(${c})"></i>${KST[k]}</span>`).join(''):'';
+  return head('viewer',cfgChip())+`<div class="split wide">
+    <section class="pane">
+      <div class="pane-head"><div class="inline"><span class="muted small">Renklendirme</span><div class="seg" role="group" aria-label="Renklendirme">
+        <button data-act="vmode" data-v="mat" aria-pressed="${VW.mode==='mat'}">Malzeme</button>
+        <button data-act="vmode" data-v="state" aria-pressed="${VW.mode==='state'}">Yaşam döngüsü</button>
+        <button data-act="vmode" data-v="comp" aria-pressed="${VW.mode==='comp'}">Uyumluluk</button></div></div>
+        <div class="acts"><label class="inline small"><input type="checkbox" id="v-cab" ${VW.showCab?'checked':''}> Kabini göster</label><button class="btn sm" data-act="vreset">Görünümü sıfırla</button></div></div>
+      <div class="cvwrap"><canvas id="cv" aria-label="Jeneratör setinin basitleştirilmiş 3D görünümü"></canvas><span class="cvhint">Sürükle: döndür · Tekerlek: yakınlaştır · Tıkla: seç</span></div>
+      ${legend?`<div class="legend">${legend}</div>`:''}
+    </section>
+    <section class="pane"><h2>Seçim</h2>
+      ${sel?`<div class="dhead"><span class="pn">${sel.pn}</span><h2>${esc(sel.name)}</h2><div class="meta"><span class="mono">Rev ${sel.rev}.${sel.ver}</span>${chip(sel.state)}${kchip(sel.comp)}</div></div>
+        <div class="acts"><button class="btn pri" data-act="goto" data-id="${sel.pn}">Parçayı aç</button><button class="btn" data-act="vsel" data-id="">Seçimi kaldır</button></div>`
+        :'<p class="muted">Modelde bir bileşene tıklayın veya listeden seçin.</p>'}
+      <div class="sec"><h3>Görünen bileşenler</h3><div class="tbl"><table><tbody>
+        ${parts.map(pn=>`<tr class="click${VW.sel===pn?' sel':''}" data-act="vsel" data-id="${pn}" tabindex="0"><td><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgb(${partColor(pn)})"></i></td><td class="mono">${pn}</td><td>${esc(S.items[pn].name)}</td></tr>`).join('')}
+      </tbody></table></div>
+      <p class="muted small">Basitleştirilmiş geometri (kutu temsilleri). Kabin, 6 panelden oluşan saydam bir kabuk olarak gösterilir. Konfigürasyonu değiştirince model de değişir.</p></div>
+    </section></div>`;
+};
+function rot(v){const cy=Math.cos(VW.yaw),sy=Math.sin(VW.yaw),cp=Math.cos(VW.pitch),sp=Math.sin(VW.pitch);
+  const x1=v[0]*cy-v[1]*sy,y1=v[0]*sy+v[1]*cy,z1=v[2];return[x1,y1*cp-z1*sp,y1*sp+z1*cp]}
+const FACES=[[[0,2,6,4],[-1,0,0]],[[1,5,7,3],[1,0,0]],[[0,4,5,1],[0,-1,0]],[[2,3,7,6],[0,1,0]],[[0,1,3,2],[0,0,-1]],[[4,6,7,5],[0,0,1]]];
+function drawViewer(){
+  const cv=$('#cv');if(!cv)return;
+  const dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;
+  if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr)}
+  const g=cv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);
+  const cs=getComputedStyle(document.documentElement);
+  g.fillStyle=cs.getPropertyValue('--sunk').trim()||'#f4f7f8';g.fillRect(0,0,W,H);
+  const C=[1500,550,700],F=7000,Z=Math.min(W,H*1.6)/4300*VW.zoom;
+  const proj=p=>{const r=rot([p[0]-C[0],p[1]-C[1],p[2]-C[2]]);const s=F/(F+r[1]);return{x:W/2+r[0]*s*Z,y:H/2-r[2]*s*Z+H*0.06,d:r[1]}};
+  /* zemin ızgarası */
+  g.strokeStyle=cs.getPropertyValue('--line').trim()||'#ccc';g.lineWidth=1;
+  for(let i=-500;i<=3500;i+=500){let a=proj([i,-400,0]),b=proj([i,1500,0]);g.beginPath();g.moveTo(a.x,a.y);g.lineTo(b.x,b.y);g.stroke()}
+  for(let j=-400;j<=1500;j+=380){let a=proj([-500,j,0]),b=proj([3500,j,0]);g.beginPath();g.moveTo(a.x,a.y);g.lineTo(b.x,b.y);g.stroke()}
+  const Lg=(()=>{const l=[-0.35,-0.75,0.56];const n=Math.hypot(...l);return l.map(v=>v/n)})();
+  const eye=[0,-F,0];const polys=[],shell=[];
+  viewerParts().forEach(pn=>{
+    if(pn===SHELL&&!VW.showCab)return;
+    GEO[pn].forEach(([x,y,z,w,d,h])=>{
+      const cr=[];for(let i=0;i<8;i++)cr.push([x+(i&1?w:0),y+(i&2?d:0),z+(i&4?h:0)]);
+      FACES.forEach(([idx,n])=>{
+        const rn=rot(n);const cen=idx.reduce((a,i)=>[a[0]+cr[i][0]/4,a[1]+cr[i][1]/4,a[2]+cr[i][2]/4],[0,0,0]);
+        const rc=rot([cen[0]-C[0],cen[1]-C[1],cen[2]-C[2]]);
+        const vis=rn[0]*(rc[0]-eye[0])+rn[1]*(rc[1]-eye[1])+rn[2]*(rc[2]-eye[2])<0;
+        if(!vis)return;
+        const pts=idx.map(i=>proj(cr[i]));
+        const shade=0.5+0.5*Math.max(0,rn[0]*Lg[0]+rn[1]*Lg[1]+rn[2]*Lg[2]);
+        (pn===SHELL?shell:polys).push({pn,pts,d:rc[1],shade});
+      });
+    });
+  });
+  polys.sort((a,b)=>b.d-a.d);
+  const draw=(p,alpha)=>{const c=partColor(p.pn),selc=VW.sel===p.pn;
+    const k=selc?Math.min(1.25,p.shade+0.25):p.shade;
+    g.beginPath();p.pts.forEach((q,i)=>i?g.lineTo(q.x,q.y):g.moveTo(q.x,q.y));g.closePath();
+    g.fillStyle=`rgba(${c.map(v=>Math.min(255,Math.round(v*k))).join(',')},${alpha})`;g.fill();
+    g.lineWidth=selc?2.2:0.8;g.strokeStyle=selc?(cs.getPropertyValue('--accent').trim()||'#1c6884'):`rgba(20,28,34,${alpha<1?0.35:0.35})`;g.stroke()};
+  polys.forEach(p=>draw(p,1));
+  shell.forEach(p=>draw(p,VW.sel===SHELL?0.32:0.14));
+  VW.polys=polys;VW.shell=shell;
+}
+function pip(pt,poly){let c=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const a=poly[i],b=poly[j];if(((a.y>pt.y)!==(b.y>pt.y))&&(pt.x<(b.x-a.x)*(pt.y-a.y)/(b.y-a.y)+a.x))c=!c}return c}
+function pickAt(x,y){for(let i=VW.polys.length-1;i>=0;i--)if(pip({x,y},VW.polys[i].pts))return VW.polys[i].pn;for(const p of VW.shell)if(pip({x,y},p.pts))return p.pn;return null}
+function initViewer(){
+  const cv=$('#cv');if(!cv)return;drawViewer();
+  let drag=null;
+  cv.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,yaw:VW.yaw,pitch:VW.pitch,moved:0};cv.setPointerCapture(e.pointerId)});
+  cv.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.moved=Math.max(drag.moved,Math.abs(dx)+Math.abs(dy));
+    VW.yaw=drag.yaw+dx*0.008;VW.pitch=Math.max(-0.1,Math.min(1.45,drag.pitch+dy*0.006));drawViewer()});
+  cv.addEventListener('pointerup',e=>{if(drag&&drag.moved<5){const r=cv.getBoundingClientRect();const pn=pickAt(e.clientX-r.left,e.clientY-r.top);VW.sel=pn;renderMain()}drag=null});
+  cv.addEventListener('wheel',e=>{e.preventDefault();VW.zoom=Math.max(0.5,Math.min(3.5,VW.zoom*(e.deltaY<0?1.1:0.91)));drawViewer()},{passive:false});
+}
+
+/* ---------- Gereksinimler ---------- */
+V.reqs=()=>{
+  const list=S.reqs.map(reqEval);
+  const subs=[...new Set(kidsAll(ROOT).map(b=>b.c))];
+  const covers=(r,s)=>r.items.some(pn=>pn===s||ancestors(pn).has(s));
+  return head('reqs')+`<div class="split">
+    <section class="pane"><div class="pane-head"><h2>Gereksinim listesi</h2><button class="btn" data-act="newReq">Yeni gereksinim</button></div>
+      <div class="tbl"><table><thead><tr><th>No</th><th>Gereksinim</th><th>Hedef</th><th>Durum</th></tr></thead><tbody>
+      ${list.map(r=>`<tr class="click${S.ui.selr===r.id?' sel':''}" data-act="selr" data-id="${r.id}" tabindex="0"><td class="mono">${r.id}</td><td>${esc(r.title)}<div class="muted small">${esc(r.cat)}</div></td><td class="small">${esc(r.target)}</td><td>${rchip(r.status)}</td></tr>`).join('')}
+      </tbody></table></div></section>
+    <section class="pane" id="detail">${S.ui.selr==='__new'?vNewReq():vReq(list.find(r=>r.id===S.ui.selr))}</section>
+  </div>
+  <section class="pane"><h2>İzlenebilirlik matrisi</h2><p class="muted small">Hangi gereksinim hangi alt sistemle karşılanıyor. ● doğrudan veya alt parçası üzerinden bağlı; ○ ürünün tamamına bağlı.</p>
+    <div class="tbl matrix"><table><thead><tr><th>Gereksinim</th>${subs.map(s=>`<th class="c" title="${esc(S.items[s].name)}">${s.slice(-3)}<div style="text-transform:none;letter-spacing:0;font-weight:400">${esc(S.items[s].name.split(',')[0])}</div></th>`).join('')}<th>Durum</th></tr></thead><tbody>
+    ${list.map(r=>`<tr><td><a class="lnk" data-act="selr" data-id="${r.id}">${r.id}</a> ${esc(r.title)}</td>${subs.map(s=>`<td class="c">${r.items.includes(ROOT)?'○':covers(r,s)?'●':''}</td>`).join('')}<td>${rchip(r.status)}</td></tr>`).join('')}
+    </tbody></table></div></section>`;
+};
+function vReq(r){
+  if(!r)return`<div class="empty">Soldan bir gereksinim seçin.</div>`;
+  const rc=S.changes.filter(c=>(c.reqs||[]).includes(r.id));
+  const canV=['design','approver'].includes(me().role);
+  return `<div class="dhead"><span class="pn">${r.id}</span><h2>${esc(r.title)}</h2><div class="meta">${rchip(r.status)}<span>${esc(r.cat)}</span><span>Yöntem: ${esc(r.method)}</span></div></div>
+   <dl class="kv"><dt>Hedef</dt><dd><b>${esc(r.target)}</b></dd><dt>Ölçülen / hesaplanan</dt><dd>${esc(r.measured)||'<span class="muted">henüz yok</span>'}</dd></dl>
+   ${r.auto?'<div class="notice info">Bu gereksinim ürün ağacındaki kütlelerden otomatik doğrulanır. Konfigürasyonu değiştirmek veya ağaca parça eklemek sonucu anında etkiler.</div>':''}
+   <div class="sec"><h3>Karşılayan kalemler</h3><div class="tbl"><table><tbody>${r.items.map(pn=>`<tr><td>${L(pn)}</td><td>${esc(S.items[pn].name)}</td><td>${chip(S.items[pn].state)}</td></tr>`).join('')}</tbody></table></div></div>
+   ${rc.length?`<div class="sec"><h3>İlgili değişiklikler</h3><div class="inline">${rc.map(c=>`<a class="lnk" data-act="gochg" data-id="${c.id}">${c.id}</a> ${esc(c.title)} ${cchip(c.status)}`).join(' ')}</div></div>`:''}
+   ${r.auto?'':`<div class="sec"><h3>Doğrulama sonucu kaydet</h3>${canV?`<form class="grid" data-form="verify">
+      <label for="v-st">Sonuç</label><select id="v-st">${Object.entries(RST).map(([k,v])=>`<option value="${k}"${r.status===k?' selected':''}>${v}</option>`).join('')}</select>
+      <label for="v-me">Ölçülen değer</label><input id="v-me" value="${esc(r.measured)}" placeholder="ör. 73,5 dB(A)">
+      <div class="full"><button class="btn pri" type="submit">Kaydet</button></div></form>`:'<p class="muted small">Doğrulama sonucunu Tasarım veya Onaylayan rolü girer.</p>'}</div>`}`;
+}
+function vNewReq(){
+  const its=Object.values(S.items).sort((a,b)=>a.pn.localeCompare(b.pn));
+  return `<div class="dhead"><h2>Yeni gereksinim</h2></div>
+  <form class="grid" data-form="newReq">
+    <label for="q-title">Başlık</label><input id="q-title" required placeholder="ör. Egzoz gaz emisyonu">
+    <label for="q-target">Hedef</label><input id="q-target" required placeholder="ör. EU Stage V">
+    <label for="q-cat">Kategori</label><input id="q-cat" placeholder="ör. Emisyon">
+    <label for="q-method">Doğrulama yöntemi</label><select id="q-method"><option>Test</option><option>Analiz</option><option>İnceleme</option><option>Gösterim</option></select>
+    <span class="full muted">Karşılayan kalemler</span>
+    <div class="full checks">${its.map(r=>`<label><input type="checkbox" name="qi" value="${r.pn}"><span class="mono">${r.pn}</span> <span>${esc(r.name)}</span></label>`).join('')}</div>
+    <div class="full acts"><button class="btn pri" type="submit">Oluştur</button><button class="btn" type="button" data-act="selr" data-id="REQ-001">Vazgeç</button></div>
+  </form>`;
+}
+
+/* ---------- Değişiklikler ---------- */
+V.changes=()=>{
+  const list=[...S.changes].sort((a,b)=>b.id.localeCompare(a.id));
+  return head('changes')+`<div class="split">
+    <section class="pane">
+      <div class="pane-head"><h2>Değişiklik talepleri</h2><button class="btn" data-act="newChg">Yeni ECR</button></div>
+      <div class="tbl"><table><thead><tr><th>No</th><th>Başlık</th><th>Durum</th></tr></thead><tbody>
+      ${list.map(c=>`<tr class="click${S.ui.selc===c.id?' sel':''}" data-act="selc" data-id="${c.id}" tabindex="0"><td class="mono">${c.id}</td><td>${esc(c.title)}</td><td>${cchip(c.status)}</td></tr>`).join('')}
+      </tbody></table></div>
+      <p class="muted small">ECR açılır, değerlendirilir ve onaylanır. Uygulandığında etkilenen parçalar yeni revizyona geçip Çalışmada durumuna döner; eski revizyon üretim için yayınlı kalır.</p>
+    </section>
+    <section class="pane" id="detail">${S.ui.selc==='__new'?vNewChg():vChg(S.changes.find(c=>c.id===S.ui.selc))}</section>
+  </div>`;
+};
+function vNewChg(){
+  const rel=Object.values(S.items).filter(x=>x.state==='released').sort((a,b)=>a.pn.localeCompare(b.pn));
+  return `<div class="dhead"><h2>Yeni değişiklik talebi (ECR)</h2><div class="meta">Taslak olarak oluşturulur</div></div>
+  <form class="grid" data-form="newChg">
+    <label for="c-title">Başlık</label><input id="c-title" required placeholder="ör. Egzoz çıkışının sağa alınması">
+    <label for="c-reason" class="full">Gerekçe</label><textarea id="c-reason" class="full" placeholder="Neden gerekli, hangi test veya geri bildirimden çıktı?"></textarea>
+    <span class="full muted">Etkilenen kalemler (yalnızca yayınlanmış olanlar)</span>
+    <div class="full checks">${rel.map(r=>`<label><input type="checkbox" name="ci" value="${r.pn}"><span class="mono">${r.pn} ${r.rev}</span> <span>${esc(r.name)}</span></label>`).join('')||'<span class="muted">Yayınlanmış parça yok.</span>'}</div>
+    <span class="full muted">İlgili gereksinimler (isteğe bağlı)</span>
+    <div class="full checks">${S.reqs.map(r=>`<label><input type="checkbox" name="cr" value="${r.id}"><span class="mono">${r.id}</span> <span>${esc(r.title)}</span></label>`).join('')}</div>
+    <div class="full acts"><button class="btn pri" type="submit">ECR oluştur</button><button class="btn" type="button" data-act="selc" data-id="${S.changes[0]?.id||''}">Vazgeç</button></div>
+  </form>`;
+}
+function vChg(c){
+  if(!c)return`<div class="empty">Soldan bir değişiklik seçin.</div>`;
+  const order=['draft','eval','approved','done'],ci=order.indexOf(c.status);
+  const flow=`<ol class="flow">${order.map((s,i)=>`<li class="${i<ci||(c.status==='rejected'&&i<2)?'done':i===ci?'cur':''}">${CST[s]}</li>${i<3?'<li class="arr muted">→</li>':''}`).join('')}${c.status==='rejected'?'<li class="arr muted">·</li><li class="x">Reddedildi</li>':''}</ol>`;
+  const impact=[...new Set(c.items.flatMap(p=>[...ancestors(p)]))];
+  const ops=S.ops.filter(o=>o.parts.some(p=>c.items.includes(p)));
+  const erpHit=S.erp.filter(e=>e.lines.some(l=>c.items.includes(l.pn)));
+  return `<div class="dhead"><span class="pn">${c.id}</span><h2>${esc(c.title)}</h2><div class="meta">${cchip(c.status)}<span>${uname(c.by)} · ${fmt(c.t)}</span></div></div>
+    ${flow}${btns(chgActions(c))}
+    <div class="sec"><h3>Gerekçe</h3><p style="max-width:70ch">${esc(c.reason)||'<span class="muted">—</span>'}</p></div>
+    <div class="sec"><h3>Etkilenen kalemler</h3><div class="tbl"><table><thead><tr><th>Parça no</th><th>Ad</th><th>Güncel rev</th><th>Durum</th></tr></thead><tbody>
+      ${c.items.map(pn=>{const it=S.items[pn];return`<tr><td>${L(pn)}</td><td>${esc(it.name)}</td><td class="mono">${it.rev}.${it.ver}</td><td>${chip(it.state)}</td></tr>`}).join('')}
+    </tbody></table></div></div>
+    <div class="sec"><h3>Etki analizi</h3><dl class="kv">
+      <dt>Üst montajlar</dt><dd>${impact.length?impact.map(L).join(', '):'<span class="muted">yok</span>'}</dd>
+      <dt>Üretim operasyonları</dt><dd>${ops.length?ops.map(o=>`${o.id} ${esc(o.name)}`).join(', '):'<span class="muted">yok</span>'}</dd>
+      <dt>ERP'ye aktarılmış</dt><dd>${erpHit.length?erpHit.map(e=>e.id).join(', '):'<span class="muted">henüz aktarılmamış</span>'}</dd>
+      <dt>Gereksinimler</dt><dd>${(c.reqs||[]).length?c.reqs.map(id=>{const r=reqEval(S.reqs.find(x=>x.id===id));return`<a class="lnk" data-act="gotoreq" data-id="${id}">${id}</a> ${rchip(r.status)}`}).join(' '):'<span class="muted">bağlı değil</span>'}</dd></dl></div>
+    <div class="sec"><h3>Geçmiş</h3><ul class="hist">${c.hist.map(h=>`<li><span class="rv">${fmt(h.t).slice(0,5)}</span><span>${esc(h.msg)}</span><span class="sub">${uname(h.u)} · ${fmt(h.t)}</span></li>`).join('')}</ul></div>`;
+}
+
+/* ---------- MBOM / BOP ---------- */
+V.mbom=()=>{
+  const lv=new Set(leafPns()),un=unassigned(),isM=me().role==='mfg';
+  const tot=S.ops.reduce((s,o)=>s+o.min,0);
+  return head('mbom',cfgChip())+`<p class="lead">Mühendislik ağacı (EBOM) ürünün nasıl tasarlandığını, üretim planı (MBOM/BOP) ise nasıl üretildiğini gösterir. Her uç parça bir operasyonda tüketilmelidir.</p>
+  ${un.length?`<div class="notice">Bu konfigürasyonda operasyona atanmamış ${un.length} parça var: ${un.map(L).join(', ')}</div>`:'<div class="notice good">Konfigürasyondaki tüm uç parçalar bir operasyona atanmış.</div>'}
+  <div class="sum"><span>Operasyon <b>${S.ops.length}</b></span><span>Toplam süre <b>${tot} dk</b></span><span>Uç parça <b>${lv.size}</b></span>${isM?'':'<span class="muted">Atama yapmak için Üretim Mühendisi rolüne geçin.</span>'}</div>
+  <div class="cards">${S.ops.map(o=>`<div class="card">
+    <div class="pane-head"><div><span class="mono" style="color:var(--accent)">${o.id}</span> <b>${esc(o.name)}</b></div><span class="muted small">${esc(o.station)} · ${o.min} dk</span></div>
+    ${o.parts.length?`<div class="tbl"><table><tbody>${o.parts.map(p=>`<tr class="${lv.has(p)?'':'dim'}"><td>${L(p)}</td><td>${esc(S.items[p].name)}${lv.has(p)?'':'<div class="muted small">bu konfigürasyonda yok</div>'}</td>${isM?`<td><button class="btn sm" data-act="opdel" data-op="${o.id}" data-pn="${p}">Çıkar</button></td>`:''}</tr>`).join('')}</tbody></table></div>`:'<p class="muted small">Parça tüketmeyen operasyon.</p>'}
+    ${isM?`<form class="inline" data-form="opadd" data-op="${o.id}"><select aria-label="Parça">${[...lv].filter(p=>!o.parts.includes(p)).map(p=>`<option value="${p}">${p} · ${esc(S.items[p].name)}</option>`).join('')}</select><button class="btn sm" type="submit">Ata</button></form>`:''}
+  </div>`).join('')}</div>
+  ${isM?`<section class="pane"><h2>Yeni operasyon</h2><form class="inline" data-form="newOp"><input id="o-name" required placeholder="Operasyon adı" style="flex:1;min-width:180px"><input id="o-st" placeholder="İstasyon" style="width:140px"><input id="o-min" type="number" min="1" value="30" style="width:80px" aria-label="Süre (dk)"><button class="btn pri" type="submit">Ekle</button></form></section>`:''}`;
+};
+
+/* ---------- ERP ---------- */
+V.erp=()=>{
+  const d=erpDiff(),bl=blockers(),ok=me().role==='mfg'&&!bl.length;
+  return head('erp',cfgChip())+`<section class="pane">
+    <div class="pane-head"><h2>Son aktarımdan bu yana değişenler</h2><button class="btn pri${ok?'':' off'}" data-act="erp" aria-disabled="${!ok}">ERP'ye gönder</button></div>
+    <p class="muted small">Seçili konfigürasyonun güncel ağacı, aynı konfigürasyonun son ERP aktarımıyla karşılaştırılır (BOM karşılaştırma).</p>
+    ${bl.length?`<div class="notice bad">Aktarım engelli: ${bl.map(esc).join(', ')}</div>`:''}
+    ${!d.last?'<p class="muted">Bu konfigürasyon henüz hiç aktarılmadı. İlk aktarımda tüm kalemler “Eklendi” olarak gider.</p>':d.list.length?'':'<div class="notice good">Fark yok. ERP güncel.</div>'}
+    ${d.list.length?`<div class="tbl"><table><thead><tr><th>Değişiklik</th><th>Parça no</th><th>Ad</th><th>Ayrıntı</th></tr></thead><tbody>${d.list.map(x=>`<tr><td><span class="chip ${x.kind==='Çıkarıldı'?'c-rejected':x.kind==='Eklendi'?'s-released':'s-work'}">${x.kind}</span></td><td>${L(x.pn)}</td><td>${esc(S.items[x.pn]?.name)}</td><td class="mono">${esc(x.txt)}</td></tr>`).join('')}</tbody></table></div>`:''}
+  </section>
+  ${S.erp.length?S.erp.map(e=>`<section class="pane"><div class="pane-head"><div><span class="mono" style="color:var(--accent)">${e.id}</span> · <b>${e.root}</b> Rev ${e.rev} · ${esc(e.label)}</div><span class="muted small">${uname(e.by)} · ${fmt(e.t)}</span></div>
+    <div class="tbl"><table><thead><tr><th>Sv.</th><th>Malzeme no</th><th>Ad</th><th>Rev</th><th class="num">Toplam adet</th></tr></thead><tbody>
+    ${e.lines.map(l=>`<tr><td class="mono muted">${l.lvl}</td><td class="mono">${l.pn}</td><td>${esc(l.name)}</td><td class="mono">${l.rev}</td><td class="num">${l.total}</td></tr>`).join('')}
+    </tbody></table></div></section>`).join(''):'<section class="pane"><div class="empty">Henüz aktarım yok. Selin T. (Üretim Mühendisi / ERP) olarak “ERP\'ye gönder” deyin.</div></section>'}`;
+};
+
+/* ---------- Geçmiş ---------- */
+V.log=()=>head('log')+`<section class="pane"><p class="muted small">Her işlem kim, ne zaman, ne yaptı bilgisiyle kaydedilir (audit trail).</p><div class="tbl"><table><thead><tr><th>Zaman</th><th>Kullanıcı</th><th>İşlem</th></tr></thead><tbody>
+  ${S.log.map(l=>`<tr><td class="mono" style="white-space:nowrap">${fmt(l.t)}</td><td style="white-space:nowrap">${uname(l.u)}</td><td>${esc(l.msg)}</td></tr>`).join('')}
+  </tbody></table></div></section>`;
+
+/* ---------- Arama ---------- */
+V.search=()=>{
+  const q=S.ui.q.trim().toLocaleLowerCase('tr');const has=s=>String(s||'').toLocaleLowerCase('tr').includes(q);
+  const it=Object.values(S.items).filter(i=>has(i.pn)||has(i.name)||has(i.material)||has(i.supplier));
+  const ch=S.changes.filter(c=>has(c.id)||has(c.title)||has(c.reason));
+  const rq=S.reqs.filter(r=>has(r.id)||has(r.title)||has(r.target)||has(r.cat));
+  const n=it.length+ch.length+rq.length;
+  return head('search')+`<p class="lead">“${esc(S.ui.q)}” için ${n} sonuç.</p>
+   ${it.length?`<section class="pane"><h3>Parçalar (${it.length})</h3><div class="tbl"><table><tbody>${it.map(i=>`<tr class="click" data-act="goto" data-id="${i.pn}" tabindex="0"><td class="mono">${i.pn}</td><td>${esc(i.name)}</td><td class="mono">${i.rev}.${i.ver}</td><td>${chip(i.state)}</td></tr>`).join('')}</tbody></table></div></section>`:''}
+   ${ch.length?`<section class="pane"><h3>Değişiklikler (${ch.length})</h3><div class="tbl"><table><tbody>${ch.map(c=>`<tr class="click" data-act="gochg" data-id="${c.id}" tabindex="0"><td class="mono">${c.id}</td><td>${esc(c.title)}</td><td>${cchip(c.status)}</td></tr>`).join('')}</tbody></table></div></section>`:''}
+   ${rq.length?`<section class="pane"><h3>Gereksinimler (${rq.length})</h3><div class="tbl"><table><tbody>${rq.map(r=>`<tr class="click" data-act="gotoreq" data-id="${r.id}" tabindex="0"><td class="mono">${r.id}</td><td>${esc(r.title)}</td><td class="small">${esc(r.target)}</td></tr>`).join('')}</tbody></table></div></section>`:''}
+   ${n?'':'<section class="pane"><div class="empty">Sonuç yok. Parça no, ad, malzeme, ECR veya gereksinim metniyle arayın.</div></section>'}`;
+};
+
+/* ---------- Mimari ---------- */
+const MAP=[
+  ['Parça + Rev.v','Item / Item Revision','Demoda tek nesne; Teamcenter\'da kimlik (Item) ile revizyon ayrı nesnelerdir.'],
+  ['Dosyalar','Dataset (named references)','CAD, çizim, PDF revizyona bağlı dataset olarak tutulur.'],
+  ['Check-out / check-in, versiyon','Check-Out / Check-In, dataset versiyonları','Kilit ve versiyonlama mantığı aynıdır.'],
+  ['Yaşam döngüsü durumları','Release Status + Workflow (EPM)','Durum, workflow görevleri tamamlanınca atanır.'],
+  ['Roller ve yetki','Group / Role + Access Manager','Teamcenter\'da kural ağacı ve ACL ile ayrıntılı yetkilendirme yapılır.'],
+  ['Görevlerim','My Worklist (Inbox)','Workflow görevleri kullanıcının gelen kutusuna düşer.'],
+  ['Ürün ağacı (EBOM)','Structure Manager / BOM View Revision','Çok seviyeli yapı, adet, where-used.'],
+  ['Varyant koşulları, 150%/100% BOM','Product Configurator, variant conditions','Seçenek ve kurallarla yapılandırılmış ağaç üretilir.'],
+  ['Revizyon kuralı','Revision Rule (Latest Working / Any Status…)','Kimin hangi revizyonu gördüğünü belirler.'],
+  ['3D görünüm','Visualization (JT), Active Workspace 3D','Gerçek sistemde CAD\'den üretilen hafif JT modelleri kullanılır.'],
+  ['Gereksinimler, izlenebilirlik','Requirements Management (Systems Engineering)','Gereksinim → tasarım → doğrulama bağlantısı.'],
+  ['ECR, etki analizi','Change Manager (ECR / ECN), Impact Analysis','Problem Report → ECR → ECN zinciri.'],
+  ['Üretim planı (MBOM/BOP)','Manufacturing Process Planner, Easy Plan','EBOM\'dan MBOM türetme ve tüketim (consumption) kontrolü.'],
+  ['RoHS / REACH durumu','Substance Compliance','Gerçek sistemde madde düzeyinde beyan ve toplama yapılır.'],
+  ['ERP aktarımı, BOM karşılaştırma','T4S (Teamcenter Gateway for SAP), BOM Compare','Malzeme ana verisi ve ürün ağacı SAP\'ye gönderilir.'],
+  ['İşlem geçmişi','Audit Manager','Kim, ne zaman, ne yaptı kaydı.'],
+  ['Genel arama','Full-text search (Active Workspace)','Nesne türleri arasında arama.']
+];
+const MISSING=[
+  ['CAD entegrasyonu','NX, SOLIDWORKS, CATIA içinden doğrudan kayıt; dosya içi parametre eşleme. Tarayıcı SLDPRT gibi dosyaları açamaz.'],
+  ['Gerçek çok kullanıcılı ortam','Ortak veritabanı, eşzamanlı kilit, sunucu tarafı yetki kontrolü. Bu demoda veri tarayıcıya özeldir.'],
+  ['Kimlik doğrulama ve elektronik imza','SSO / LDAP, onaylarda imza ve doğrulama kaydı.'],
+  ['Görsel iş akışı tasarımcısı','Workflow şablonlarını sürükle-bırak ile tasarlama, paralel onay, vekalet.'],
+  ['Sınıflandırma (Classification)','Parçaları sınıf hiyerarşisi ve öznitelikleriyle arayıp yeniden kullanma.'],
+  ['Multi-Site ve tedarikçi işbirliği','Lokasyonlar arası replikasyon, tedarikçiye kontrollü veri paylaşımı.'],
+  ['Proje planlama','Schedule Manager ile teslimatları ürün verisine bağlama.'],
+  ['Simülasyon ve test verisi yönetimi','CAE modelleri, test sonuçlarının revizyonlara bağlanması.'],
+  ['Servis / MRO','Sahadaki ürünün as-built ve as-maintained yapısı.'],
+  ['ECAD ve kablaj','Elektrik şemaları ve kablo demetlerinin mekanik yapıyla birlikte yönetimi.']
+];
+const PERM=[
+  ['Parça oluşturma, check-out, check-in','●','',''],
+  ['İncelemeye gönderme','●','',''],
+  ['Yayın onayı, ret, geçersiz kılma','','●',''],
+  ['ECR açma','●','●','●'],
+  ['ECR onayı veya reddi','','●',''],
+  ['ECR uygulama (revizyon açma)','●','',''],
+  ['Gereksinim oluşturma','●','●','●'],
+  ['Gereksinim doğrulama sonucu','●','●',''],
+  ['MBOM operasyon ataması','','','●'],
+  ['ERP aktarımı','','','●']
+];
+function archSvg(){
+  const E=(x,y,w,t,fields)=>{const h=30+fields.length*16+6;return`<g class="ent"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5"/><rect class="hd" x="${x+1}" y="${y+1}" width="${w-2}" height="26" rx="4"/><text class="t1" x="${x+10}" y="${y+18}">${t}</text>${fields.map((f,i)=>`<text class="f" x="${x+10}" y="${y+44+i*16}">${f}</text>`).join('')}</g>`};
+  const A=(d,lx,ly,l)=>`<path d="${d}" marker-end="url(#ah)"/><text class="lbl" x="${lx}" y="${ly}">${l}</text>`;
+  return`<svg viewBox="0 0 940 430" role="img" aria-label="Veri modeli diyagramı"><defs><marker id="ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--accent);stroke:none"/></marker></defs>
+  ${E(20,20,170,'Item',['pn (kimlik)','ad, tür','sorumlu'])}
+  ${E(260,20,190,'Item Revision',['rev, ver','durum (lifecycle)','kilit (check-out)','öznitelik, uyumluluk'])}
+  ${E(530,20,170,'Dataset',['dosya adı, tür','boyut, içerik'])}
+  ${E(750,20,170,'Requirement',['hedef, yöntem','doğrulama sonucu'])}
+  ${E(260,190,190,'BOM Line',['üst, alt','adet','varyant koşulu'])}
+  ${E(20,190,170,'Option / Variant',['seçenek','değerler'])}
+  ${E(530,170,170,'Change (ECR)',['durum','etkilenen revizyonlar','ilgili gereksinimler'])}
+  ${E(750,170,170,'ERP Transfer',['konfigürasyon','düz liste anlık görüntü'])}
+  ${E(260,330,190,'Operation (BOP)',['istasyon, süre','tüketilen parçalar'])}
+  ${E(530,330,170,'Audit Log',['zaman, kullanıcı','işlem'])}
+  ${A('M190,50 L258,50',200,42,'1..n')}
+  ${A('M450,50 L528,50',462,42,'1..n')}
+  ${A('M355,206 L355,124',362,170,'üst / alt')}
+  ${A('M190,224 L258,224',198,216,'koşul')}
+  ${A('M528,210 L452,110',470,150,'etkiler')}
+  ${A('M750,72 L452,90',600,98,'karşılanır')}
+  ${A('M750,212 L452,236',600,236,'anlık görüntü')}
+  ${A('M355,328 L355,286',362,314,'tüketir')}
+  </svg>`;
+}
+V.arch=()=>head('arch')+`<section class="pane prose">
+    <h2>Bu demo nedir?</h2>
+    <p>Tek bir HTML dosyası olarak çalışan, kurulum ve sunucu gerektirmeyen bir PLM iskeletidir. Amaç, bir PLM sisteminin temel kavramlarını (kimlik ve revizyon ayrımı, yaşam döngüsü, değişiklik yönetimi, varyantlı ürün ağacı, EBOM'dan MBOM'a geçiş, ERP entegrasyonu) çalışan bir örnek üzerinde göstermek ve bunların Teamcenter'daki karşılıklarını eşlemektir.</p>
+    <p class="muted small">Örnek veri tamamen kurgusaldır; herhangi bir şirkete ait parça numarası veya bilgi içermez.</p>
+  </section>
+  <section class="pane"><h2>Veri modeli</h2><div class="diagram">${archSvg()}</div>
+    <p class="muted small">Demoda Item ve Item Revision tek kayıtta tutulur; son yayınlanan revizyonun anlık görüntüsü ayrıca saklanarak revizyon kuralı simüle edilir.</p></section>
+  <div class="split even">
+    <section class="pane"><h2>Durum makineleri</h2>
+      <div class="sec"><h3>Parça</h3><ol class="flow"><li>Çalışmada</li><li class="arr muted">→</li><li>İncelemede</li><li class="arr muted">→</li><li>Yayınlandı</li><li class="arr muted">→</li><li>Geçersiz</li></ol>
+      <p class="small muted">Ret, İncelemede'den Çalışmada'ya döndürür. Yayınlı parça yalnızca onaylı ECR ile yeni revizyonda Çalışmada'ya döner. Montaj, alt bileşenleri yayınlanmadan onaylanamaz.</p></div>
+      <div class="sec"><h3>Değişiklik (ECR)</h3><ol class="flow"><li>Taslak</li><li class="arr muted">→</li><li>Değerlendirmede</li><li class="arr muted">→</li><li>Onaylandı</li><li class="arr muted">→</li><li>Uygulandı</li></ol>
+      <p class="small muted">Değerlendirmede iken reddedilebilir. Uygulama, etkilenen yayınlı revizyonları bir sonraki harfe taşır.</p></div>
+    </section>
+    <section class="pane"><h2>Yetki matrisi</h2><div class="tbl"><table><thead><tr><th>İşlem</th><th class="c">Tasarım</th><th class="c">Onaylayan</th><th class="c">Üretim / ERP</th></tr></thead><tbody>
+      ${PERM.map(p=>`<tr><td>${p[0]}</td>${p.slice(1).map(v=>`<td class="c" style="color:var(--accent)">${v}</td>`).join('')}</tr>`).join('')}</tbody></table></div></section>
+  </div>
+  <section class="pane"><h2>Teamcenter karşılıkları</h2><div class="tbl"><table><thead><tr><th>Bu demoda</th><th>Teamcenter'da</th><th>Not</th></tr></thead><tbody>
+    ${MAP.map(m=>`<tr><td><b>${m[0]}</b></td><td>${m[1]}</td><td class="small muted">${m[2]}</td></tr>`).join('')}</tbody></table></div></section>
+  <section class="pane"><h2>Kapsam dışında kalanlar</h2><p class="muted small">Teamcenter'ın sunduğu, ancak bu demoda bulunmayan yetenekler.</p><div class="tbl"><table><tbody>
+    ${MISSING.map(m=>`<tr><td><b>${m[0]}</b></td><td class="small">${m[1]}</td></tr>`).join('')}</tbody></table></div></section>
+  <div class="split even">
+    <section class="pane prose"><h2>Tarayıcıda çalışma sınırları</h2><ul>
+      <li>Tek dosya, dış kütüphane yok; 3D görüntüleyici dahil her şey çevrimdışı çalışır.</li>
+      <li>Veri tarayıcının yerel deposunda (localStorage), yüklenen dosyalar IndexedDB'de tutulur. Başka bilgisayara taşımak için “Dışa aktar / İçe aktar” kullanılır.</li>
+      <li>Gerçek kullanıcı girişi yoktur; rol değiştirme bir simülasyondur ve yetki kontrolü istemci tarafındadır.</li>
+      <li>CAD dosyaları ekli olarak saklanır ama içerikleri okunmaz; 3D model basitleştirilmiş kutulardan oluşur.</li>
+    </ul></section>
+    <section class="pane prose"><h2>Gerçek sisteme ölçeklendirme</h2><ul>
+      <li><b>Veri katmanı:</b> İlişkisel veritabanı (Item, Revision, BOM Line, Change tabloları) ve dosyalar için ayrı bir dosya sunucusu (vault).</li>
+      <li><b>Servis katmanı:</b> İş kuralları ve yetki kontrolü sunucuda; istemci yalnızca API çağırır.</li>
+      <li><b>Kimlik:</b> Kurumsal SSO, rol ve grup eşlemesi, onaylarda elektronik imza.</li>
+      <li><b>Entegrasyon:</b> CAD eklentileri, ERP'ye kuyruk tabanlı aktarım ve hata yönetimi, MES'e iş emri bilgisi.</li>
+      <li><b>İzlenebilirlik:</b> Değiştirilemez audit kaydı, raporlama için ayrı veri ambarı.</li>
+    </ul></section>
+  </div>`;
+
+/* =========================================================
+   Render
+   ========================================================= */
+function renderNav(){
+  $('#user').innerHTML=USERS.map(u=>`<option value="${u.id}"${u.id===S.user?' selected':''}>${u.name}</option>`).join('');
+  $('#roleTxt').textContent=me().roleName;
+  const tk=tasks().length,openC=S.changes.filter(c=>['eval','approved'].includes(c.status)).length,fail=S.reqs.map(reqEval).filter(r=>r.status==='fail').length;
+  const badge={tasks:[tk,tk>0],changes:[openC,openC>0],reqs:[fail,fail>0],items:[Object.keys(S.items).length,false],erp:[S.erp.length,false]};
+  $('#nav').innerHTML=NAV.map(([g,l])=>`<div class="ngrp"><span>${g}</span>${l.map(([k,t])=>`<button class="nbtn" data-act="view" data-v="${k}"${S.ui.view===k?' aria-current="page"':''}><span>${t}</span>${badge[k]&&badge[k][0]?`<span class="b${badge[k][1]?' hot':''}">${badge[k][0]}</span>`:''}</button>`).join('')}</div>`).join('');
+}
+function renderMain(){
+  if(!V[S.ui.view])S.ui.view='home';
+  $('#main').innerHTML=V[S.ui.view]();
+  if(S.ui.view==='viewer')initViewer();
+  hydrateThumbs();
+}
+function render(){renderNav();renderMain();save()}
+async function hydrateThumbs(){
+  for(const img of document.querySelectorAll('img[data-thumb]')){
+    try{const b=await IDB.get(img.dataset.thumb);if(b)img.src=URL.createObjectURL(b)}catch(e){}
+  }
+}
+
+/* =========================================================
+   Eylemler
+   ========================================================= */
+const cur=()=>S.items[S.ui.sel];
+const curC=()=>S.changes.find(c=>c.id===S.ui.selc);
+const curR=()=>S.reqs.find(r=>r.id===S.ui.selr);
+let resetArmed=false;
+function scrollDetail(){if(window.innerWidth<1100)requestAnimationFrame(()=>document.getElementById('detail')?.scrollIntoView({behavior:'smooth',block:'start'}))}
+function setView(v){S.ui.view=v;if(v!=='search'){S.ui.q='';$('#gq').value=''}window.scrollTo({top:0})}
+const A={
+  view:el=>setView(el.dataset.v),
+  setuser:el=>{S.user=el.dataset.id;log(`Oturum: ${me().name} (${me().roleName})`)},
+  sel:el=>{S.ui.sel=el.dataset.id;scrollDetail()},
+  goto:el=>{setView('items');S.ui.sel=el.dataset.id},
+  selc:el=>{S.ui.selc=el.dataset.id;scrollDetail()},
+  gochg:el=>{setView('changes');S.ui.selc=el.dataset.id},
+  selr:el=>{S.ui.selr=el.dataset.id;scrollDetail()},
+  gotoreq:el=>{setView('reqs');S.ui.selr=el.dataset.id},
+  task:el=>{const k=el.dataset.kind,id=el.dataset.id;
+    if(k==='item'){setView('items');S.ui.sel=id}else if(k==='chg'){setView('changes');S.ui.selc=id}else if(k==='req'){setView('reqs');S.ui.selr=id}else if(k==='erp')setView('erp');else if(k==='mbom')setView('mbom')},
+  newItem:()=>{if(me().role!=='design')return toast('Yeni parçayı Tasarım Mühendisi oluşturur.',1)||'skip';S.ui.sel='__new'},
+  newChg:()=>{S.ui.selc='__new'},
+  newReq:()=>{S.ui.selr='__new'},
+  checkout:()=>{const it=cur();it.co=S.user;log(`${it.pn} check-out yapıldı (düzenleme kilidi alındı)`);toast(`${it.pn} artık sizde kilitli.`)},
+  cancelco:()=>{const it=cur();it.co=null;log(`${it.pn} check-out iptal edildi`);toast('Değişiklikler atıldı, kilit açıldı.')},
+  submit:()=>{const it=cur();it.state='review';log(`${it.pn} Rev ${it.rev} incelemeye gönderildi`);toast('İncelemeye gönderildi. Onay görevi Burak K.\'nın listesine düştü.')},
+  approve:()=>{const it=cur();it.state='released';it.released={rev:it.rev,ver:it.ver,name:it.name,material:it.material,mass:it.mass};
+    it.hist.unshift({rev:it.rev,ver:it.ver,t:now(),by:S.user,note:`Rev ${it.rev} yayınlandı`});log(`${it.pn} Rev ${it.rev} yayınlandı`);toast(`${it.pn} Rev ${it.rev} yayınlandı.`)},
+  reject:()=>{const it=cur();it.state='work';log(`${it.pn} incelemede reddedildi, Çalışmada durumuna döndü`);toast('Reddedildi, tasarımcıya geri döndü.')},
+  obsolete:()=>{const it=cur();it.state='obsolete';it.hist.unshift({rev:it.rev,ver:it.ver,t:now(),by:S.user,note:'Geçersiz kılındı'});log(`${it.pn} geçersiz kılındı`)},
+  bomdel:el=>{const it=cur(),b=S.bom.find(x=>x.id===el.dataset.lid);S.bom=S.bom.filter(x=>x.id!==el.dataset.lid);log(`${it.pn} BOM: ${b.c} çıkarıldı`)},
+  fdel:el=>{const it=cur(),f=it.files[+el.dataset.i];it.files.splice(+el.dataset.i,1);if(f.id)IDB.del(f.id).catch(()=>{});log(`${it.pn}: ${f.name} kaldırıldı`)},
+  openfile:async el=>{let b=null;try{b=await IDB.get(el.dataset.fid)}catch(e){}
+    if(!b){toast('Dosya içeriği bu tarayıcıda bulunamadı (başka bilgisayardan içe aktarılmış olabilir).',1);return 'skip'}
+    const url=URL.createObjectURL(b),name=el.dataset.name,img=(el.dataset.type||'').startsWith('image/');
+    const ov=$('#ov');ov.innerHTML=`<div class="box" role="dialog" aria-label="${esc(name)}"><div class="pane-head"><b class="mono">${esc(name)}</b><button class="btn sm" data-act="closeov">Kapat</button></div>
+      ${img?`<img src="${url}" alt="${esc(name)}">`:`<p class="muted">Bu dosya türü tarayıcıda önizlenmiyor.</p>`}
+      <div class="acts"><button class="btn" data-act="dlfile" data-fid="${el.dataset.fid}" data-name="${esc(name)}">İndir</button></div></div>`;ov.hidden=false;return 'skip'},
+  closeov:()=>{$('#ov').hidden=true;return 'skip'},
+  csubmit:()=>{const c=curC();c.status='eval';c.hist.unshift({t:now(),u:S.user,msg:'Değerlendirmeye gönderildi'});log(`${c.id} değerlendirmeye gönderildi`);toast('Gönderildi. Değerlendirme görevi onaylayana düştü.')},
+  capprove:()=>{const c=curC();c.status='approved';c.hist.unshift({t:now(),u:S.user,msg:'Onaylandı'});log(`${c.id} onaylandı`);toast('Onaylandı. Uygulama görevi tasarımcıya düştü.')},
+  creject:()=>{const c=curC();c.status='rejected';c.hist.unshift({t:now(),u:S.user,msg:'Reddedildi'});log(`${c.id} reddedildi`)},
+  capply:()=>{const c=curC(),done=[],skip=[];
+    c.items.forEach(pn=>{const it=S.items[pn];
+      if(it.state==='released'){const o=it.rev;it.rev=nextRev(o);it.ver=1;it.state='work';it.hist.unshift({rev:it.rev,ver:1,t:now(),by:S.user,note:`${c.id} ile revize edildi (${o} → ${it.rev})`});done.push(`${pn} ${o}→${it.rev}`)}
+      else skip.push(pn)});
+    c.status='done';c.hist.unshift({t:now(),u:S.user,msg:`Uygulandı: ${done.join(', ')||'—'}${skip.length?` · atlandı: ${skip.join(', ')}`:''}`});
+    log(`${c.id} uygulandı: ${done.join(', ')}`);toast(`Yeni revizyonlar açıldı: ${done.join(', ')}.`)},
+  rule:el=>{S.ui.rule=el.dataset.v},
+  opt:el=>{S.cfg[el.dataset.o]=el.dataset.v},
+  preset:el=>{S.cfg={...PRESETS[+el.dataset.i].cfg};toast(`Konfigürasyon: ${cfgLabel()}`)},
+  vmode:el=>{VW.mode=el.dataset.v},
+  vreset:()=>{VW.yaw=-0.72;VW.pitch=0.42;VW.zoom=1},
+  vsel:el=>{VW.sel=el.dataset.id||null},
+  opdel:el=>{const o=S.ops.find(x=>x.id===el.dataset.op);o.parts=o.parts.filter(p=>p!==el.dataset.pn);log(`${o.id}: ${el.dataset.pn} operasyondan çıkarıldı`)},
+  erp:()=>{if(me().role!=='mfg'){toast('ERP aktarımı Üretim Mühendisi / ERP rolünde (Selin T.) yapılır.',1);return 'skip'}
+    const bl=blockers();if(bl.length){toast(`Aktarım engellendi: ${bl.length} kalem yayınlanmamış veya kilitli.`,1);return 'skip'}
+    S.seq.erp++;const r=S.items[ROOT],id='ERP-'+pad(S.seq.erp);
+    S.erp.unshift({id,root:ROOT,rev:r.rev,key:cfgKey(),label:cfgLabel(),t:now(),by:S.user,lines:walk(ROOT).map(n=>({lvl:n.lvl,pn:n.pn,name:S.items[n.pn].name,rev:S.items[n.pn].rev,total:n.total}))});
+    log(`${ROOT} (${cfgLabel()}) ERP'ye aktarıldı: ${id}`);setView('erp');toast('ERP aktarımı tamamlandı.')},
+  copyBom:()=>{const rows=walk(ROOT);const txt=['Seviye\tParça no\tAd\tRev\tAdet\tToplam\tDurum',...rows.map(r=>{const it=S.items[r.pn];return[r.lvl,r.pn,it.name,it.rev,r.lvl?r.qty:'',r.lvl?r.total:'',STATES[it.state]].join('\t')})].join('\n');
+    copyText(txt,'Ürün ağacı kopyalandı. Excel\'de bir hücreye yapıştırın.');return 'skip'},
+  exportJson:async()=>{const txt=JSON.stringify(S,null,1);
+    if(await saveFile(`mini-plm-veri-${new Date().toISOString().slice(0,10)}.json`,txt)!=='ok')copyText(txt,'Veri JSON olarak panoya kopyalandı. Bir metin dosyasına yapıştırıp .json olarak kaydedin.');return 'skip'},
+  csvBom:async()=>{const rows=walk(ROOT);const q=s=>`"${String(s).replace(/"/g,'""')}"`;
+    const txt='﻿'+['Seviye;Parça no;Ad;Rev;Adet;Toplam;Durum',...rows.map(r=>{const it=S.items[r.pn];return[r.lvl,r.pn,q(it.name),it.rev,r.lvl?r.qty:'',r.lvl?r.total:'',STATES[it.state]].join(';')})].join('\r\n');
+    if(await saveFile(`${ROOT}-ebom.csv`,txt)!=='ok')toast('İndirme bu görünümde kullanılamıyor. “Excel için kopyala” düğmesini kullanın.',1);return 'skip'},
+  dlfile:async el=>{let b=null;try{b=await IDB.get(el.dataset.fid)}catch(e){}if(b&&await saveFile(el.dataset.name,b)!=='ok')toast('İndirme bu görünümde kullanılamıyor.',1);return 'skip'},
+  importJson:()=>{$('#importFile').click();return 'skip'},
+  reset:()=>{const b=$('#resetBtn');if(!resetArmed){resetArmed=true;b.textContent='Emin misiniz?';setTimeout(()=>{resetArmed=false;b.textContent='Sıfırla'},3000);return 'skip'}
+    resetArmed=false;b.textContent='Sıfırla';S=seed();VW.sel=null;IDB.clear().catch(()=>{});$('#gq').value='';toast('Demo başlangıç verisine döndü.')}
+};
+/* dosya indirme: artifact görünümünde downloads yeteneği, yerel dosyada normal tarayıcı indirmesi */
+let DL=null;
+try{if(window.claude&&window.claude.use)window.claude.use('downloads').then(d=>{DL=d}).catch(()=>{})}catch(e){}
+async function saveFile(name,data){
+  if(DL){try{await DL.save({filename:name,data});toast(`${name} kaydedildi.`);return 'ok'}
+    catch(e){if(e&&e.code==='declined')return 'ok';if(e&&e.code==='rejected_extension'){toast('Bu dosya türü bu görünümden indirilemez. Sayfayı dosya olarak açtığınızda indirebilirsiniz.',1);return 'ok'}if(e&&e.code==='rate_limited'){toast('Önceki kaydetme penceresi hâlâ açık.',1);return 'ok'}return 'fail'}}
+  if(window.claude)return 'fail';
+  try{const a=document.createElement('a');a.href=URL.createObjectURL(data instanceof Blob?data:new Blob([data]));a.download=name;document.body.appendChild(a);a.click();a.remove();toast(`${name} indirildi.`);return 'ok'}catch(e){return 'fail'}
+}
+function copyText(txt,msg){
+  try{navigator.clipboard.writeText(txt).then(()=>toast(msg),()=>fallbackCopy(txt,msg))}catch(e){fallbackCopy(txt,msg)}
+}
+function fallbackCopy(txt,msg){
+  const ov=$('#ov');ov.innerHTML=`<div class="box" role="dialog" aria-label="Kopyala"><div class="pane-head"><b>Metni kopyalayın</b><button class="btn sm" data-act="closeov">Kapat</button></div><textarea id="cpy" style="min-height:240px;font-family:var(--f-mono);font-size:12px">${esc(txt)}</textarea><p class="muted small">Tarayıcı panoya erişime izin vermedi. Metin seçili; Ctrl+C ile kopyalayın.</p></div>`;
+  ov.hidden=false;const t=$('#cpy');t.focus();t.select();
+}
+const ITEM_ACTS=new Set(['checkout','submit','approve','reject','obsolete']),CHG_ACTS=new Set(['csubmit','capprove','creject','capply']);
+
+document.addEventListener('click',async e=>{
+  if(e.target.id==='ov'){$('#ov').hidden=true;return}
+  const el=e.target.closest('[data-act]');if(!el)return;
+  const act=el.dataset.act;
+  if(el.getAttribute('aria-disabled')==='true'){
+    let why=el.title;
+    if(act==='erp')why=me().role!=='mfg'?'ERP aktarımı Üretim Mühendisi / ERP rolünde (Selin T.) yapılır.':'Önce tüm kalemler yayınlanmalı.';
+    if(why)toast(why,1);return;
+  }
+  if(ITEM_ACTS.has(act)){const a=itemActions(cur()).find(x=>x.act===act);if(!a.ok)return toast(a.why,1)}
+  if(CHG_ACTS.has(act)){const a=chgActions(curC()).find(x=>x.act===act);if(!a.ok)return toast(a.why,1)}
+  if(A[act]){const r=await A[act](el);if(r==='skip')return;render()}
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&!$('#ov').hidden){$('#ov').hidden=true;return}
+  if(e.key==='Enter'&&e.target.matches('tr[data-act],li[data-act]'))e.target.click();
+});
+$('#gq').addEventListener('input',e=>{
+  S.ui.q=e.target.value;
+  if(S.ui.q.trim())S.ui.view='search';else if(S.ui.view==='search')S.ui.view='home';
+  renderNav();renderMain();save();
+});
+document.addEventListener('change',async e=>{
+  const t=e.target;
+  if(t.id==='user'){S.user=t.value;const u=me();log(`Oturum: ${u.name} (${u.roleName})`);render();toast(`Artık ${u.name} · ${u.roleName} olarak çalışıyorsunuz.`)}
+  if(t.id==='v-cab'){VW.showCab=t.checked;drawViewer()}
+  if(t.id==='f-file'){const it=cur();let added=0;
+    for(const f of t.files){if(f.size>25*1048576){toast(`${f.name} 25 MB sınırını aşıyor.`,1);continue}
+      const id=`${it.pn}-${Date.now()}-${added}`;
+      try{await IDB.put(id,f);it.files.push({name:f.name,size:f.size,type:f.type,id,t:now(),by:S.user});added++}catch(err){toast('Dosya bu tarayıcıda saklanamadı (gizli pencere veya depolama kapalı olabilir).',1)}}
+    if(added){log(`${it.pn}: ${added} dosya eklendi`);render();toast(`${added} dosya eklendi.`)}}
+  if(t.id==='importFile'){const f=t.files[0];if(!f)return;
+    try{const d=JSON.parse(await f.text());if(!d||d.v!==2||!d.items||!d.bom)throw 0;S=d;render();toast('Veri içe aktarıldı.')}catch(err){toast('Dosya okunamadı. Bu demodan “Dışa aktar” ile alınmış bir JSON seçin.',1)}
+    t.value=''}
+});
+document.addEventListener('submit',e=>{
+  const fm=e.target,f=fm.dataset.form;if(!f)return;e.preventDefault();
+  const v=id=>(document.getElementById(id)?.value||'').trim();
+  if(f==='checkin'){const it=cur();it.name=v('f-name');it.material=v('f-mat');it.mass=v('f-mass')===''?'':Number(v('f-mass'));
+    if(document.getElementById('f-sup'))it.supplier=v('f-sup');it.comp=v('f-comp')||it.comp;
+    it.ver++;it.co=null;it.hist.unshift({rev:it.rev,ver:it.ver,t:now(),by:S.user,note:`v${it.ver} kaydedildi`});log(`${it.pn} v${it.ver} kaydedildi (check-in)`);toast(`Check-in tamam: Rev ${it.rev}, v${it.ver}.`)}
+  if(f==='newItem'){const pn=v('n-pn').toUpperCase();if(S.items[pn])return toast(`${pn} zaten var. Başka bir parça no girin.`,1);
+    const kind=v('n-kind');S.items[pn]={pn,name:v('n-name'),kind,material:v('n-mat'),mass:v('n-mass')===''?'':Number(v('n-mass')),rev:'A',ver:1,state:'work',owner:S.user,co:null,supplier:'',comp:'pending',released:null,
+      files:defFiles(pn,kind).map(n=>({name:n})),hist:[{rev:'A',ver:1,t:now(),by:S.user,note:'Parça oluşturuldu'}]};
+    S.ui.sel=pn;log(`${pn} oluşturuldu`);toast(`${pn} oluşturuldu. Bir montaja eklemek için o montajı check-out yapın.`)}
+  if(f==='bomadd'){const it=cur(),c=v('b-child'),q=Math.max(1,parseInt(v('b-qty'))||1),cv=v('b-cond');if(!c)return;
+    if(c===it.pn||descendants(c).has(it.pn))return toast('Döngüsel ürün ağacı oluşturulamaz.',1);
+    const cond=cv?{o:cv.split(':')[0],v:cv.split(':')[1]}:null;
+    S.bomSeq=(S.bomSeq||S.bom.length)+1;S.bom.push({id:'L'+S.bomSeq,p:it.pn,c,q,cond});log(`${it.pn} BOM: ${c} ×${q} eklendi${cond?` (${condTxt(cond)})`:''}`)}
+  if(f==='newChg'){const items=[...fm.querySelectorAll('input[name="ci"]:checked')].map(x=>x.value),rq=[...fm.querySelectorAll('input[name="cr"]:checked')].map(x=>x.value);
+    if(!items.length)return toast('En az bir etkilenen kalem seçin.',1);
+    S.seq.chg++;const id='ECR-'+pad(S.seq.chg);
+    S.changes.push({id,title:v('c-title'),reason:v('c-reason'),items,reqs:rq,status:'draft',by:S.user,t:now(),hist:[{t:now(),u:S.user,msg:'Oluşturuldu'}]});
+    S.ui.selc=id;log(`${id} oluşturuldu`);toast(`${id} taslak olarak oluşturuldu.`)}
+  if(f==='newReq'){const items=[...fm.querySelectorAll('input[name="qi"]:checked')].map(x=>x.value);
+    if(!items.length)return toast('En az bir karşılayan kalem seçin.',1);
+    S.seq.req++;const id='REQ-'+String(S.seq.req).padStart(3,'0');
+    S.reqs.push({id,title:v('q-title'),target:v('q-target'),cat:v('q-cat')||'Genel',method:v('q-method'),items,status:'open',measured:''});
+    S.ui.selr=id;log(`${id} gereksinimi oluşturuldu`)}
+  if(f==='verify'){const r=curR();r.status=v('v-st');r.measured=v('v-me');log(`${r.id} doğrulama sonucu: ${RST[r.status]}${r.measured?` (${r.measured})`:''}`);toast('Doğrulama sonucu kaydedildi.')}
+  if(f==='opadd'){const o=S.ops.find(x=>x.id===fm.dataset.op),p=fm.querySelector('select').value;if(!p)return;o.parts.push(p);log(`${o.id}: ${p} operasyona atandı`)}
+  if(f==='newOp'){S.seq.op+=10;const id='OP'+S.seq.op;S.ops.push({id,name:v('o-name'),station:v('o-st')||'—',min:Math.max(1,parseInt(v('o-min'))||1),parts:[]});log(`${id} operasyonu eklendi`)}
+  render();
+});
+let rz;window.addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(()=>{if(S.ui.view==='viewer')drawViewer()},80)});
+try{window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(S.ui.view==='viewer')drawViewer()})}catch(e){}
+
+load();
+(()=>{const h=(location.hash||'').slice(1);if(V[h]&&h!=='search')S.ui.view=h})();
+if(S.ui.view==='search'&&!S.ui.q)S.ui.view='home';
+$('#gq').value=S.ui.q||'';
+render();
+</script>
